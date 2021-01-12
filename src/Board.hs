@@ -12,10 +12,10 @@ data PieceType = King | Queen | Rook | Bishop | Knight | Pawn deriving Eq
 data Colour = White | Black deriving (Show, Eq, Ord)
 
 data Piece = Piece Colour PieceType deriving Eq
-data Move = Move (Position, Position) | Castle Colour CastleType | Promote Position PieceType deriving Show
+data Move = Move Position Position | Castle Colour CastleType | Promote Position PieceType deriving Show
 
 toUCI :: Move -> String
-toUCI (Move ((sCol, sRow), (dCol, dRow))) = (map toLower $ show sCol) ++ (show sRow) ++ (map toLower $ show dCol) ++ (show dRow)
+toUCI (Move (sCol, sRow) (dCol, dRow)) = (map toLower $ show sCol) ++ (show sRow) ++ (map toLower $ show dCol) ++ (show dRow)
 
 newtype Board = Board (V.Vector (Maybe Piece))
 

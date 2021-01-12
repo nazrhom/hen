@@ -1,6 +1,5 @@
 module Fen where
 
-import Move
 import Board
 import qualified Data.Vector as V
 import qualified Data.Set as S
@@ -113,4 +112,21 @@ parseUCIMove = do
   startRow <- digit
   endCol <- letter
   endRow <- digit
-  return $ Move ((readColumn startCol, read [startRow]), (readColumn endCol, read [endRow]))
+  mbPromote <- (Just <$> try letter) <|> pure Nothing
+  case mbPromote of
+    Just pt -> return $ Promote (readColumn startCol, read [startRow]) (toPt pt)
+    Nothing -> case ((readColumn startCol, read [startRow]), (readColumn endCol, read [endRow])) of
+      ((E,1), (G,1)) -> return $ Castle White Short
+      ((E,1), (C,8)) -> return $ Castle White Long
+      ((E,8), (G,8)) -> return $ Castle Black Short
+      ((E,8), (C,8)) -> return $ Castle Black Long
+      (src, dst) -> return $ Move src dst
+
+      
+
+  where
+    toPt 'q' = Queen
+    toPt 'r' = Rook
+    toPt 'n' = Knight
+    toPt 'b' = Bishop
+    toPt _   = error "Unknown piece type in parseUCIMove"

@@ -1,7 +1,7 @@
 module Main where
 
 import Board
-import Move
+import MoveGen
 import Fen
 import GameTree
 import Text.Parsec
@@ -46,14 +46,13 @@ processLine depth gs = do
     Right (FEN gs') -> processLine depth gs'
     Right (STARTPOS moves) -> processLine depth (sequenceMoves initialGameState moves)
     Right GO -> do
-      putStrLn "here we go"
       let (gs', score) = negamax gs (active gs) depth
       putStrLn $ show gs'
       logLine $ show gs'
       logLine $ show (lastMove gs')
       logLine $ show score
       printAndLog $ "bestmove " ++ (toUCI (fromJust $ lastMove gs'))
-
+      processLine depth gs'
     Left _ -> do
       logLine $ "unkown command " ++ l
       processLine depth gs
@@ -79,7 +78,6 @@ parseReady = do
 parseNewGame = do
   string "ucinewgame"
   return NEWGAME
-
 
 parsePosition = do
   string "position"
@@ -110,5 +108,3 @@ parseGo = do
   string "go"
   many anyChar
   return GO
--- main = do
---   putStrLn $ show $ negamax initialGameState White 6

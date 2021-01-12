@@ -1,4 +1,4 @@
-module Move where
+module MoveGen where
 
 import Board
 import qualified Data.Vector as V
@@ -18,7 +18,7 @@ applyAll :: GameState -> [Move] -> [GameState]
 applyAll gs moves = map (apply gs) moves
 
 apply :: GameState -> Move -> GameState
-apply gs m@(Move (src, dst)) = gs {
+apply gs m@(Move src dst) = gs {
     board=move src dst (board gs)
   , castling=loosesCastlingRights (board gs) m (castling gs)
   , fullMove=(fullMove gs) + 1
@@ -71,7 +71,7 @@ removeCastlingRightsFor :: S.Set CastlingRight -> Colour -> S.Set CastlingRight
 removeCastlingRightsFor crs col = S.filter (\(CastlingRight c ty) -> c /= col) crs
 
 loosesCastlingRights :: Board -> Move -> S.Set CastlingRight -> S.Set CastlingRight
-loosesCastlingRights b (Move (src, dst)) activeRights | S.null activeRights = S.empty 
+loosesCastlingRights b (Move src dst) activeRights | S.null activeRights = S.empty 
                                                       | otherwise = case ty of
     King -> activeRights `removeCastlingRightsFor` colour
     Rook -> case (colour, col) of
@@ -103,8 +103,8 @@ genPawnForwardMoves b c i = if isInStartingPosition then singleStep ++ doubleSte
     doubleStepSquare = if c == White then (col, row+2) else (col, row-2)
     inbounds i = i >= 0 && i <= 63
     promotion = map (Promote (indexToPosition i)) [Queen, Knight]
-    singleStep = if inbounds (positionToIndex singleStepSquare) && isEmpty b (positionToIndex singleStepSquare) then [Move ((col, row), singleStepSquare)] else []
-    doubleStep = if inbounds (positionToIndex doubleStepSquare) && isEmpty b (positionToIndex singleStepSquare) && isEmpty b (positionToIndex doubleStepSquare) then [Move ((col, row), doubleStepSquare)] else []
+    singleStep = if inbounds (positionToIndex singleStepSquare) && isEmpty b (positionToIndex singleStepSquare) then [Move (col, row) singleStepSquare] else []
+    doubleStep = if inbounds (positionToIndex doubleStepSquare) && isEmpty b (positionToIndex singleStepSquare) && isEmpty b (positionToIndex doubleStepSquare) then [Move (col, row) doubleStepSquare] else []
 
 genPawnTakes :: Board -> Colour -> Int -> [Move]
 genPawnTakes b c i = 
@@ -116,8 +116,8 @@ genPawnTakes b c i =
       else checkLeftTake ++ checkRightTake
 
   where
-    checkRightTake = if (inbounds rightTake && containsOpponentPiece b c rightTake) then [Move (current, indexToPosition rightTake)] else []
-    checkLeftTake = if (inbounds leftTake && containsOpponentPiece b c leftTake) then [Move (current, indexToPosition leftTake)] else []
+    checkRightTake = if (inbounds rightTake && containsOpponentPiece b c rightTake) then [Move current $ indexToPosition rightTake] else []
+    checkLeftTake = if (inbounds leftTake && containsOpponentPiece b c leftTake) then [Move current $ indexToPosition leftTake] else []
     inbounds i = i >= 0 && i <= 63
     rightTake = if c == White then i + 9 else i - 7
     leftTake = if c == White then i + 7 else i - 9
@@ -149,7 +149,7 @@ genKnightMoves board colour i = map moveFromCurr $ filter canMove $ filter inbou
               , (c+1, r+2), (c+2, r+1)
               , (c+2, r-1), (c+1, r-2)]
     inbounds (a,b) = (a >= 0 && a <= 7) && (b >= 1 && b <= 8)
-    moveFromCurr (a,b) = Move ((col,r), (fromInt a, b))
+    moveFromCurr (a,b) = Move (col,r) (fromInt a, b)
     canMove (a,b) = case board `atPosition` (fromInt a, b) of 
       Nothing -> True
       Just (Piece c p) -> c /= colour
@@ -212,7 +212,7 @@ genKingMoves gs colour i = (map moveFromCurr $ filter canMove $ filter inbounds 
               , (c, r-1), (c-1, r-1)
               , (c-1, r), (c-1, r+1)]
     inbounds (a,b) = (a >= 0 && a <= 7) && (b >= 1 && b <= 8)
-    moveFromCurr (a,b) = Move ((col,r), (fromInt a, b))
+    moveFromCurr (a,b) = Move (col,r) (fromInt a, b)
 
     canMove (a,b) = case (board gs) `atPosition` (fromInt a, b) of
       Nothing -> True
@@ -235,7 +235,7 @@ canCastle gs Black cty i = i == 60 && case cty of
     activeRights = castling gs
 
 rayToMoves :: Position -> [Position] -> [Move]
-rayToMoves src dests = Move <$> [(src, dest) | dest <- dests]
+rayToMoves src dests = uncurry Move <$> [(src, dest) | dest <- dests]
 
 genRay :: Board -> Colour -> Maybe Position -> (Position -> Maybe Position) -> [Position]
 genRay b c (Just pos) fn = 

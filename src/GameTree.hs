@@ -1,7 +1,7 @@
 module GameTree where
 
 import Board
-import Move
+import MoveGen
 import Evaluation
 
 negamax :: GameState -> Colour -> Int -> (GameState, Int)
