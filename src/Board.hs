@@ -4,13 +4,18 @@ module Board where
 
 import qualified Data.Vector as V
 import Control.Monad.State
-import Data.Char (toUpper)
+import Data.Char (toUpper, toLower)
+import qualified Data.Set as S
 
 data PieceType = King | Queen | Rook | Bishop | Knight | Pawn deriving Eq
 
-data Colour = White | Black deriving (Show, Eq)
+data Colour = White | Black deriving (Show, Eq, Ord)
 
 data Piece = Piece Colour PieceType deriving Eq
+data Move = Move (Position, Position) | Castle Colour CastleType | Promote Position PieceType deriving Show
+
+toUCI :: Move -> String
+toUCI (Move ((sCol, sRow), (dCol, dRow))) = (map toLower $ show sCol) ++ (show sRow) ++ (map toLower $ show dCol) ++ (show dRow)
 
 newtype Board = Board (V.Vector (Maybe Piece))
 
@@ -56,7 +61,7 @@ remove pos (Board board) = Board $ board V.// [(positionToIndex pos, Nothing)]
 
 move :: Position -> Position -> Board -> Board
 move src dest board = case board `atPosition` src of 
-  Nothing -> board
+  Nothing -> error "Trying to move from empty square"
   Just piece -> remove src (place piece dest board) 
 
 atPosition :: Board -> Position -> Maybe Piece
@@ -76,6 +81,23 @@ pieceIndexes p (Board b) = V.elemIndices (Just p) b
 
 pieceTypeIndexes :: PieceType -> Board -> (V.Vector Int, V.Vector Int)
 pieceTypeIndexes p (Board b) = (V.elemIndices (Just $ Piece White p) b, V.elemIndices (Just $ Piece Black p) b)
+
+flipColour :: Colour -> Colour
+flipColour White = Black
+flipColour Black = White
+
+data CastleType = Long | Short deriving (Eq, Show, Ord)
+data CastlingRight = CastlingRight Colour CastleType deriving (Eq, Show, Ord)
+
+data GameState = GameState {
+  board :: Board,
+  active :: Colour,
+  castling :: S.Set CastlingRight,
+  enPassant :: Maybe Position,
+  halfMoveClock :: Int,
+  fullMove :: Int,
+  lastMove :: Maybe Move
+}
 
 instance Show PieceType where
   show King = "k"
@@ -118,3 +140,34 @@ initialBoard = execState placeInitialPieces emptyBoard
     placePiece p pos = do
       b <- get
       put $ place p pos b
+
+instance Show GameState where
+  show g = show (board g)
+
+printGameState :: GameState -> IO ()
+printGameState gs = putStrLn $
+     "\nactive: " ++ show a
+  ++ "\ncastling:" ++ show c
+  ++ "\nenPassant:" ++ show ep
+  ++ "\nhalfMoveClock:" ++ show hmc
+  ++ "\nfullMove:" ++ show fm
+  ++ "\n"
+  ++ show b
+  where
+    b = (board gs)
+    a = (active gs)
+    c = (castling gs)
+    ep = (enPassant gs)
+    hmc = (halfMoveClock gs)
+    fm = (fullMove gs)
+
+initialGameState :: GameState
+initialGameState = GameState {
+    board=initialBoard,
+    active=White,
+    castling=S.fromList [CastlingRight White Long, CastlingRight White Short, CastlingRight Black Long, CastlingRight Black Short],
+    enPassant=Nothing,
+    halfMoveClock=0,
+    fullMove=0,
+    lastMove=Nothing
+  }

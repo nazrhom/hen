@@ -2,32 +2,88 @@ module Move where
 
 import Board
 import qualified Data.Vector as V
+import Data.List (delete)
+import qualified Data.Set as S
 
-data CastleType = Long | Short deriving Show
-data Move = Move (Position, Position) | Castle Colour CastleType | Promote Position PieceType deriving Show
+genMoves :: GameState -> Colour -> [Move]
+genMoves gs col =
+     genAllPawnMoves (board gs) col 
+  ++ genAllKnightMoves (board gs) col
+  ++ genAllBishopMoves (board gs) col
+  ++ genAllRookMoves (board gs) col
+  ++ genAllQueenMoves (board gs) col
+  ++ genAllKingMoves gs col
 
-genMoves :: Board -> Colour -> [Move]
-genMoves board col = 
-     genAllPawnMoves board col 
-  ++ genAllKnightMoves board col
-  ++ genAllBishopMoves board col
-  ++ genAllRookMoves board col
-  ++ genAllQueenMoves board col
-  ++ genAllKingMoves board col
+applyAll :: GameState -> [Move] -> [GameState]
+applyAll gs moves = map (apply gs) moves
 
-applyAll :: Board -> [Move] -> [Board]
-applyAll board ms = map (apply board) ms
-
-apply :: Board -> Move -> Board
-apply board (Move (src, dst)) = move src dst board
-apply board (Castle White Short) = move (E,1) (G,1) $ move (H,1) (F,1) board
-apply board (Castle White Long) = move (E,1) (C,1) $ move (A,1) (D,1) board
-apply board (Castle Black Short) = move (E,8) (G,8) $ move (H,8) (F,8) board
-apply board (Castle Black Long) = move (E,8) (C,8) $ move (A,8) (D,8) board
-apply board (Promote pos pty) = remove pos $ place (Piece colour pty) (col, row+1) board
+apply :: GameState -> Move -> GameState
+apply gs m@(Move (src, dst)) = gs {
+    board=move src dst (board gs)
+  , castling=loosesCastlingRights (board gs) m (castling gs)
+  , fullMove=(fullMove gs) + 1
+  , active=flipColour (active gs)
+  , lastMove=Just m
+  }
+apply gs m@(Castle White Short) = gs {
+    board=move (E,1) (G,1) $ move (H,1) (F,1) (board gs)
+  , castling=removeCastlingRightsFor (castling gs) White
+  , fullMove=(fullMove gs) + 1
+  , active=flipColour (active gs)
+  , lastMove=Just m
+  }
+apply gs m@(Castle White Long) = gs {
+    board=move (E,1) (C,1) $ move (A,1) (D,1) (board gs)
+  , castling=removeCastlingRightsFor (castling gs) White
+  , fullMove=(fullMove gs) + 1
+  , active=flipColour (active gs)
+  , lastMove=Just m
+  }
+apply gs m@(Castle Black Short) = gs {
+    board=move (E,8) (G,8) $ move (H,8) (F,8) (board gs)
+  , castling=removeCastlingRightsFor (castling gs) Black
+  , fullMove=(fullMove gs) + 1
+  , active=flipColour (active gs)
+  , lastMove=Just m
+  }
+apply gs m@(Castle Black Long) = gs {
+    board=move (E,8) (C,8) $ move (A,8) (D,8) (board gs)
+  , castling=removeCastlingRightsFor (castling gs) Black
+  , fullMove=(fullMove gs) + 1
+  , active=flipColour (active gs)
+  , lastMove=Just m
+  }
+apply gs m@(Promote pos pty) = gs {
+    board=remove pos $ place (Piece colour pty) (col, row+1) (board gs) 
+  , fullMove=(fullMove gs) + 1
+  , active=flipColour (active gs)
+  , lastMove=Just m
+  }
   where
-    Just (Piece colour Pawn) = board `atPosition` pos
+    Just (Piece colour Pawn) = (board gs) `atPosition` pos
     (col, row) = pos
+
+sequenceMoves :: GameState -> [Move] -> GameState
+sequenceMoves g (m:ms) = sequenceMoves (apply g m) ms
+sequenceMoves g [] = g
+
+removeCastlingRightsFor :: S.Set CastlingRight -> Colour -> S.Set CastlingRight
+removeCastlingRightsFor crs col = S.filter (\(CastlingRight c ty) -> c /= col) crs
+
+loosesCastlingRights :: Board -> Move -> S.Set CastlingRight -> S.Set CastlingRight
+loosesCastlingRights b (Move (src, dst)) activeRights | S.null activeRights = S.empty 
+                                                      | otherwise = case ty of
+    King -> activeRights `removeCastlingRightsFor` colour
+    Rook -> case (colour, col) of
+      (White, A) -> S.delete (CastlingRight White Long)   activeRights
+      (Black, A) -> S.delete (CastlingRight Black Long)   activeRights
+      (White, H) -> S.delete (CastlingRight White Short)  activeRights
+      (Black, H) -> S.delete (CastlingRight Black Short)  activeRights
+      _ -> activeRights
+    _ -> activeRights
+  where
+    Just (Piece colour ty) = b `atPosition` src
+    (col, row) = src
 
 genAllPawnMoves :: Board -> Colour -> [Move]
 genAllPawnMoves board col = concat $ V.toList $ V.map (genPawnMoves board col) pawns
@@ -141,12 +197,13 @@ genBishopMoves board colour i = northeast ++ northwest ++ southeast ++ southwest
     southeast = rayToMoves (row,col) $ genSouthEastRay board colour (row,col)
     southwest = rayToMoves (row,col) $ genSouthWestRay board colour (row,col)
 
-genAllKingMoves :: Board -> Colour -> [Move]
-genAllKingMoves board col = concat $ V.toList $ V.map (genKingMoves board col) kings
-  where kings = pieceIndexes (Piece col King) board
+genAllKingMoves :: GameState -> Colour -> [Move]
+genAllKingMoves gs col = concat $ V.toList $ V.map (genKingMoves gs col) kings
+  where
+    kings = pieceIndexes (Piece col King) (board gs)
 
-genKingMoves :: Board -> Colour -> Int -> [Move]
-genKingMoves board colour i = (map moveFromCurr $ filter canMove $ filter inbounds allMoves) ++ longCastle ++ shortCastle
+genKingMoves :: GameState -> Colour -> Int -> [Move]
+genKingMoves gs colour i = (map moveFromCurr $ filter canMove $ filter inbounds allMoves) ++ longCastle ++ shortCastle
   where
     (col,r) = indexToPosition i
     c = toInt col
@@ -157,19 +214,25 @@ genKingMoves board colour i = (map moveFromCurr $ filter canMove $ filter inboun
     inbounds (a,b) = (a >= 0 && a <= 7) && (b >= 1 && b <= 8)
     moveFromCurr (a,b) = Move ((col,r), (fromInt a, b))
 
-    canMove (a,b) = case board `atPosition` (fromInt a, b) of 
+    canMove (a,b) = case (board gs) `atPosition` (fromInt a, b) of
       Nothing -> True
       Just (Piece c p) -> c /= colour
-    longCastle = if canCastle board colour Long i then [Castle colour Long] else []
-    shortCastle = if canCastle board colour Short i then [Castle colour Short] else []
+    longCastle = if canCastle gs colour Long i then [Castle colour Long] else []
+    shortCastle = if canCastle gs colour Short i then [Castle colour Short] else []
 
-canCastle :: Board -> Colour -> CastleType -> Int -> Bool
-canCastle board White cty i = i == 4 && case cty of 
-    Long -> all (isEmpty board) [1,2,3] 
-    Short -> all (isEmpty board) [5,6]  
-canCastle board Black cty i = i == 60 && case cty of 
-    Long -> all (isEmpty board) [57,58,59] 
-    Short -> all (isEmpty board) [61,62]
+canCastle :: GameState -> Colour -> CastleType -> Int -> Bool
+canCastle gs White cty i = i == 4 && case cty of
+    Long -> CastlingRight White Long `elem` activeRights && all (isEmpty b) [1,2,3] 
+    Short -> CastlingRight White Short `elem` activeRights && all (isEmpty b) [5,6]  
+  where
+    b = board gs
+    activeRights = castling gs
+canCastle gs Black cty i = i == 60 && case cty of
+    Long -> CastlingRight Black Long `elem` activeRights && all (isEmpty b) [57,58,59] 
+    Short -> CastlingRight Black Short `elem` activeRights && all (isEmpty b) [61,62]
+  where
+    b = board gs
+    activeRights = castling gs
 
 rayToMoves :: Position -> [Position] -> [Move]
 rayToMoves src dests = Move <$> [(src, dest) | dest <- dests]

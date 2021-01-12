@@ -1,12 +1,22 @@
 module Fen where
 
 import Move
-import GameState
 import Board
 import qualified Data.Vector as V
+import qualified Data.Set as S
 import Text.Parsec hiding (Column)
 import Data.Char (toUpper, isUpper)
 import Text.Read hiding (get)
+
+readColumn :: Char -> Column
+readColumn 'a' = A
+readColumn 'b' = B
+readColumn 'c' = C
+readColumn 'd' = D
+readColumn 'e' = E
+readColumn 'f' = F
+readColumn 'h' = H
+readColumn 'g' = G
 
 parseChar :: Parsec String () [Maybe Piece]
 parseChar = do
@@ -37,21 +47,24 @@ parseEmpty = do
   char '-'
   return Nothing
 
-parseCastling = parseEmpty <|> Just <$> many1 parsePiece
+parseCastling = S.fromList <$> (parseEmpty' <|> many1 parsePiece)
   where
     parsePiece = shortWhite <|> shortBlack <|> longBlack <|> longWhite
+    parseEmpty' = do
+      parseEmpty
+      return []
     shortWhite = do
       char 'K'
-      return $ CastlingRights White Short
+      return $ CastlingRight White Short
     shortBlack = do
       char 'k'
-      return $ CastlingRights Black Short
+      return $ CastlingRight Black Short
     longBlack = do
       char 'q'
-      return $ CastlingRights Black Long
+      return $ CastlingRight Black Long
     longWhite = do
       char 'Q'
-      return $ CastlingRights White Long
+      return $ CastlingRight White Long
 
 parseEnPassant :: Parsec String () (Maybe Position)
 parseEnPassant = do
@@ -59,16 +72,7 @@ parseEnPassant = do
   r <- digit
   return $ Just (readC c, read [r] :: Int)
   where
-    readC c = case c of 
-      'a' -> A
-      'b' -> B
-      'c' -> C
-      'd' -> D
-      'e' -> E
-      'f' -> F
-      'h' -> H
-      'g' -> G
-
+    readC c = readColumn c
 parseFEN = do
   fen <- parseLines
   space
@@ -88,7 +92,8 @@ parseFEN = do
       castling = castling,
       enPassant = enPassant,
       halfMoveClock = halfM,
-      fullMove = moves
+      fullMove = moves,
+      lastMove = Nothing
     }
 
 fromFEN s = case parse parseFEN "" s of
@@ -100,3 +105,12 @@ invertLines xs@(a:as) = (invertLines rest) ++ x
   where 
     (x, rest) = splitAt 8 xs
 invertLines [] = []
+
+
+parseUCIMove :: Parsec String () Move
+parseUCIMove = do
+  startCol <- letter
+  startRow <- digit
+  endCol <- letter
+  endRow <- digit
+  return $ Move ((readColumn startCol, read [startRow]), (readColumn endCol, read [endRow]))

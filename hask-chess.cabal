@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: aa157b58d5f82ca887811805c65e029305a3f0dd055f39f93bc9692e810af9c1
+-- hash: 0f7a09c50c2c497cdd4f745648955f2a3be259f68806f13bd4f6de7d471a14d0
 
 name:           hask-chess
 version:        0.1.0.0
@@ -30,7 +30,6 @@ library
       Board
       Evaluation
       Fen
-      GameState
       GameTree
       Move
   other-modules:
@@ -39,6 +38,7 @@ library
       src
   build-depends:
       base >=4.7 && <5
+    , containers
     , mtl
     , parsec
     , vector
@@ -53,6 +53,7 @@ executable hask-chess-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , containers
     , hask-chess
     , mtl
     , parsec
@@ -69,6 +70,7 @@ test-suite hask-chess-test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , containers
     , hask-chess
     , mtl
     , parsec
