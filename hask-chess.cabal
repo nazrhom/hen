@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4c4960cf688660898028592e7bd61ada9b381cbff756af228e2b657dd269f5c5
+-- hash: e5ce64ce3d436cb5e4ec0523273b64d7547515aea1c7e107f4638fe6001afca4
 
 name:           hask-chess
 version:        0.1.0.0
@@ -32,6 +32,7 @@ library
       Fen
       GameTree
       MoveGen
+      Uci
   other-modules:
       Paths_hask_chess
   hs-source-dirs:
