@@ -16,6 +16,12 @@ data Move = Move Position Position | Castle Colour CastleType | Promote Position
 
 toUCI :: Move -> String
 toUCI (Move (sCol, sRow) (dCol, dRow)) = (map toLower $ show sCol) ++ (show sRow) ++ (map toLower $ show dCol) ++ (show dRow)
+toUCI (Castle White Short) = "e1g1"
+toUCI (Castle White Long)  = "e1c8"
+toUCI (Castle Black Short) = "e8g8"
+toUCI (Castle Black Long)  = "e8c8"
+toUCI (Promote (sCol, sRow) pty) = (map toLower $ show sCol) ++ show sRow ++ (map toLower $ show sCol) ++ show (sRow + 1) ++ show pty
+
 
 newtype Board = Board (V.Vector (Maybe Piece))
 
