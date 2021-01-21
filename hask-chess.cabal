@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e5ce64ce3d436cb5e4ec0523273b64d7547515aea1c7e107f4638fe6001afca4
+-- hash: e48ee55cfa4e32067f315e9b1e605d91e835d46939b5495eccd42614505ed5be
 
 name:           hask-chess
 version:        0.1.0.0
@@ -38,7 +38,8 @@ library
   hs-source-dirs:
       src
   build-depends:
-      base >=4.7 && <5
+      HUnit
+    , base >=4.7 && <5
     , containers
     , mtl
     , parsec
@@ -53,7 +54,8 @@ executable hask-chess-exe
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      HUnit
+    , base >=4.7 && <5
     , containers
     , hask-chess
     , mtl
@@ -70,7 +72,8 @@ test-suite hask-chess-test
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      HUnit
+    , base >=4.7 && <5
     , containers
     , hask-chess
     , mtl

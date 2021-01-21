@@ -158,44 +158,48 @@ genAllRookMoves :: Board -> Colour -> [Move]
 genAllRookMoves board col = concat $ V.toList $ V.map (genRookMoves board col) rooks
   where rooks = pieceIndexes (Piece col Rook) board
 
+rookRays :: Board -> Colour -> Position -> [[Position]]
+rookRays board colour (row, col) = [north, south, east, west]
+  where
+    north = genNorthRay board colour (row,col)
+    south = genSouthRay board colour (row,col)
+    east = genEastRay board colour (row,col)
+    west = genWestRay board colour (row,col)
+
+bishopRays :: Board -> Colour -> Position -> [[Position]]
+bishopRays board colour (row, col) = [northEast, northWest, southEast, southWest]
+  where
+    northEast = genNorthEastRay board colour (row,col)
+    northWest = genNorthWestRay board colour (row,col)
+    southEast = genSouthEastRay board colour (row,col)
+    southWest = genSouthWestRay board colour (row,col)
+
 genRookMoves :: Board -> Colour -> Int -> [Move]
 genRookMoves board colour i = north ++ south ++ east ++ west
   where
     (row, col) = indexToPosition i
-    north = rayToMoves (row,col) $ genNorthRay board colour (row,col)
-    south = rayToMoves (row,col) $ genSouthRay board colour (row,col)
-    east = rayToMoves (row,col) $ genEastRay board colour (row,col)
-    west = rayToMoves (row,col) $ genWestRay board colour (row,col)
+    [north, south, east, west] = fmap (rayToMoves (row,col)) $ rookRays board colour (row, col)
 
 genAllQueenMoves :: Board -> Colour -> [Move]
 genAllQueenMoves board col = concat $ V.toList $ V.map (genQueenMoves board col) queens
   where queens = pieceIndexes (Piece col Queen) board
 
 genQueenMoves :: Board -> Colour -> Int -> [Move]
-genQueenMoves board colour i = north ++ south ++ east ++ west ++ northeast ++ northwest ++ southeast ++ southwest
+genQueenMoves board colour i = north ++ south ++ east ++ west ++ northEast ++ northWest ++ southEast ++ southWest
   where
     (row, col) = indexToPosition i
-    north = rayToMoves (row,col) $ genNorthRay board colour (row,col)
-    south = rayToMoves (row,col) $ genSouthRay board colour (row,col)
-    east = rayToMoves (row,col) $ genEastRay board colour (row,col)
-    west = rayToMoves (row,col) $ genWestRay board colour (row,col)
-    northeast = rayToMoves (row,col) $ genNorthEastRay board colour (row,col)
-    northwest = rayToMoves (row,col) $ genNorthWestRay board colour (row,col)
-    southeast = rayToMoves (row,col) $ genSouthEastRay board colour (row,col)
-    southwest = rayToMoves (row,col) $ genSouthWestRay board colour (row,col)
+    [north, south, east, west] = fmap (rayToMoves (row,col)) $ rookRays board colour (row, col)
+    [northEast, northWest, southEast, southWest] = fmap (rayToMoves (row,col)) $ bishopRays board colour (row, col)
 
 genAllBishopMoves :: Board -> Colour -> [Move]
 genAllBishopMoves board col = concat $ V.toList $ V.map (genBishopMoves board col) bishops
   where bishops = pieceIndexes (Piece col Bishop) board
 
 genBishopMoves :: Board -> Colour -> Int -> [Move]
-genBishopMoves board colour i = northeast ++ northwest ++ southeast ++ southwest
+genBishopMoves board colour i = northEast ++ northWest ++ southEast ++ southWest
   where
     (row, col) = indexToPosition i
-    northeast = rayToMoves (row,col) $ genNorthEastRay board colour (row,col)
-    northwest = rayToMoves (row,col) $ genNorthWestRay board colour (row,col)
-    southeast = rayToMoves (row,col) $ genSouthEastRay board colour (row,col)
-    southwest = rayToMoves (row,col) $ genSouthWestRay board colour (row,col)
+    [northEast, northWest, southEast, southWest] = fmap (rayToMoves (row,col)) $ bishopRays board colour (row, col)
 
 genAllKingMoves :: GameState -> Colour -> [Move]
 genAllKingMoves gs col = concat $ V.toList $ V.map (genKingMoves gs col) kings

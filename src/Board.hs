@@ -12,12 +12,12 @@ data PieceType = King | Queen | Rook | Bishop | Knight | Pawn deriving Eq
 data Colour = White | Black deriving (Show, Eq, Ord)
 
 data Piece = Piece Colour PieceType deriving Eq
-data Move = Move Position Position | Castle Colour CastleType | Promote Position PieceType deriving Show
+data Move = Move Position Position | Castle Colour CastleType | Promote Position PieceType deriving (Eq, Show)
 
 newtype Board = Board (V.Vector (Maybe Piece))
 
 type Position = (Column, Row)
-data Column = A | B | C | D | E | F | G | H deriving Show
+data Column = A | B | C | D | E | F | G | H deriving (Show, Eq)
 
 toInt :: Column -> Int
 toInt A = 0
