@@ -3,6 +3,7 @@ module MoveGen where
 import Board
 import qualified Data.Vector as V
 import Data.List (delete)
+import Data.Maybe (catMaybes)
 import qualified Data.Set as S
 
 genMoves :: GameState -> Colour -> [Move]
@@ -135,50 +136,55 @@ containsOpponentPiece b c i | i < 0 || i > 63 = error "debug: containsOpponentPi
   Nothing -> False
   Just (Piece c' p) -> c /= c'
 
-genAllKnightMoves :: Board -> Colour -> [Move]
-genAllKnightMoves board col = concat $ V.toList $ V.map (genKnightMoves board col) knights
-  where knights = pieceIndexes (Piece col Knight) board
-
-genKnightMoves :: Board -> Colour -> Int -> [Move]
-genKnightMoves board colour i = map moveFromCurr $ filter canMove $ filter inbounds allMoves
+knightMoves :: Board -> Colour -> Position -> [Position]
+knightMoves board colour (col, row) = map (\(a,b) -> (fromInt a, b)) $ filter canMove $ filter inbounds allMoves
   where
-    (col,r) = indexToPosition i
     c = toInt col
+    r = row
     allMoves = [(c-1, r-2), (c-2, r-1)
               , (c-2, r+1), (c-1, r+2)
               , (c+1, r+2), (c+2, r+1)
               , (c+2, r-1), (c+1, r-2)]
     inbounds (a,b) = (a >= 0 && a <= 7) && (b >= 1 && b <= 8)
-    moveFromCurr (a,b) = Move (col,r) (fromInt a, b)
     canMove (a,b) = case board `atPosition` (fromInt a, b) of 
       Nothing -> True
       Just (Piece c p) -> c /= colour
 
+rookRays :: Board -> Colour -> Position -> [[Position]]
+rookRays board colour (col, row) = [north, south, east, west]
+  where
+    north = genNorthRay board colour (col,row)
+    south = genSouthRay board colour (col,row)
+    east = genEastRay board colour (col,row)
+    west = genWestRay board colour (col,row)
+
+bishopRays :: Board -> Colour -> Position -> [[Position]]
+bishopRays board colour (col, row) = [northEast, northWest, southEast, southWest]
+  where
+    northEast = genNorthEastRay board colour (col,row)
+    northWest = genNorthWestRay board colour (col,row)
+    southEast = genSouthEastRay board colour (col,row)
+    southWest = genSouthWestRay board colour (col,row)
+
+genAllKnightMoves :: Board -> Colour -> [Move]
+genAllKnightMoves board col = concat $ V.toList $ V.map (genKnightMoves board col) knights
+  where knights = pieceIndexes (Piece col Knight) board
+
+genKnightMoves :: Board -> Colour -> Int -> [Move]
+genKnightMoves board colour i = map moveFromCurr $ knightMoves board colour (col, row)
+  where
+    (col,row) = indexToPosition i
+    moveFromCurr (a,b) = Move (col,row) (a, b)
+ 
 genAllRookMoves :: Board -> Colour -> [Move]
 genAllRookMoves board col = concat $ V.toList $ V.map (genRookMoves board col) rooks
   where rooks = pieceIndexes (Piece col Rook) board
 
-rookRays :: Board -> Colour -> Position -> [[Position]]
-rookRays board colour (row, col) = [north, south, east, west]
-  where
-    north = genNorthRay board colour (row,col)
-    south = genSouthRay board colour (row,col)
-    east = genEastRay board colour (row,col)
-    west = genWestRay board colour (row,col)
-
-bishopRays :: Board -> Colour -> Position -> [[Position]]
-bishopRays board colour (row, col) = [northEast, northWest, southEast, southWest]
-  where
-    northEast = genNorthEastRay board colour (row,col)
-    northWest = genNorthWestRay board colour (row,col)
-    southEast = genSouthEastRay board colour (row,col)
-    southWest = genSouthWestRay board colour (row,col)
-
 genRookMoves :: Board -> Colour -> Int -> [Move]
 genRookMoves board colour i = north ++ south ++ east ++ west
   where
-    (row, col) = indexToPosition i
-    [north, south, east, west] = fmap (rayToMoves (row,col)) $ rookRays board colour (row, col)
+    (col, row) = indexToPosition i
+    [north, south, east, west] = fmap (rayToMoves (col,row)) $ rookRays board colour (col, row)
 
 genAllQueenMoves :: Board -> Colour -> [Move]
 genAllQueenMoves board col = concat $ V.toList $ V.map (genQueenMoves board col) queens
@@ -187,9 +193,9 @@ genAllQueenMoves board col = concat $ V.toList $ V.map (genQueenMoves board col)
 genQueenMoves :: Board -> Colour -> Int -> [Move]
 genQueenMoves board colour i = north ++ south ++ east ++ west ++ northEast ++ northWest ++ southEast ++ southWest
   where
-    (row, col) = indexToPosition i
-    [north, south, east, west] = fmap (rayToMoves (row,col)) $ rookRays board colour (row, col)
-    [northEast, northWest, southEast, southWest] = fmap (rayToMoves (row,col)) $ bishopRays board colour (row, col)
+    (col, row) = indexToPosition i
+    [north, south, east, west] = fmap (rayToMoves (col,row)) $ rookRays board colour (col, row)
+    [northEast, northWest, southEast, southWest] = fmap (rayToMoves (col,row)) $ bishopRays board colour (col, row)
 
 genAllBishopMoves :: Board -> Colour -> [Move]
 genAllBishopMoves board col = concat $ V.toList $ V.map (genBishopMoves board col) bishops
@@ -198,8 +204,8 @@ genAllBishopMoves board col = concat $ V.toList $ V.map (genBishopMoves board co
 genBishopMoves :: Board -> Colour -> Int -> [Move]
 genBishopMoves board colour i = northEast ++ northWest ++ southEast ++ southWest
   where
-    (row, col) = indexToPosition i
-    [northEast, northWest, southEast, southWest] = fmap (rayToMoves (row,col)) $ bishopRays board colour (row, col)
+    (col, row) = indexToPosition i
+    [northEast, northWest, southEast, southWest] = fmap (rayToMoves (col,row)) $ bishopRays board colour (col, row)
 
 genAllKingMoves :: GameState -> Colour -> [Move]
 genAllKingMoves gs col = concat $ V.toList $ V.map (genKingMoves gs col) kings
@@ -237,6 +243,14 @@ canCastle gs Black cty i = i == 60 && case cty of
   where
     b = board gs
     activeRights = castling gs
+
+attackers :: Int -> Colour -> Board -> [Piece]
+attackers i colour board = inLOS
+  where
+    (col, row) = indexToPosition i
+    inLOS = catMaybes $ fmap ((board `atPosition`) . last) $ straight ++ diag 
+    straight = filter (/= []) $ rookRays board colour (col, row) 
+    diag = filter (/= []) $ bishopRays board colour (col, row)
 
 rayToMoves :: Position -> [Position] -> [Move]
 rayToMoves src dests = uncurry Move <$> [(src, dest) | dest <- dests]

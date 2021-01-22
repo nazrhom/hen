@@ -58,7 +58,10 @@ remove pos (Board board) = Board $ board V.// [(positionToIndex pos, Nothing)]
 
 move :: Position -> Position -> Board -> Board
 move src dest board = case board `atPosition` src of 
-  Nothing -> error "Trying to move from empty square"
+  Nothing -> error $ "Trying to move from empty square\n"
+      ++ show board
+      ++ "\nsrc:" ++ show src
+      ++ "\ndest:" ++ show dest
   Just piece -> remove src (place piece dest board) 
 
 atPosition :: Board -> Position -> Maybe Piece
