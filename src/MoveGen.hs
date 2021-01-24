@@ -8,11 +8,11 @@ import qualified Data.Set as S
 
 genMoves :: GameState -> Colour -> [Move]
 genMoves gs col =
-     genAllPawnMoves (board gs) col 
-  ++ genAllKnightMoves (board gs) col
-  ++ genAllBishopMoves (board gs) col
-  ++ genAllRookMoves (board gs) col
-  ++ genAllQueenMoves (board gs) col
+     genAllPawnMoves gs col
+  ++ genAllKnightMoves gs col
+  ++ genAllBishopMoves gs col
+  ++ genAllRookMoves gs col
+  ++ genAllQueenMoves gs col
   ++ genAllKingMoves gs col
 
 applyAll :: GameState -> [Move] -> [GameState]
@@ -86,10 +86,11 @@ loosesCastlingRights b (Move src dst) activeRights | S.null activeRights = S.emp
     Just (Piece colour ty) = b `atPosition` src
     (col, row) = src
 
-genAllPawnMoves :: Board -> Colour -> [Move]
-genAllPawnMoves board col = concat $ V.toList $ V.map (genPawnMoves board col) pawns
+genAllPawnMoves :: GameState -> Colour -> [Move]
+genAllPawnMoves gs col = concat $ V.toList $ V.map (genPawnMoves b col) pawns
   where
-    pawns = pieceIndexes (Piece col Pawn) board
+    b = board gs
+    pawns = pieceIndexes (Piece col Pawn) b
 
 genPawnMoves :: Board -> Colour -> Int -> [Move]
 genPawnMoves b c i = genPawnTakes b c i ++ genPawnForwardMoves b c i
@@ -115,7 +116,6 @@ genPawnTakes b c i =
       if i `mod` 8 == 7
       then checkLeftTake 
       else checkLeftTake ++ checkRightTake
-
   where
     checkRightTake = if (inbounds rightTake && containsOpponentPiece b c rightTake) then [Move current $ indexToPosition rightTake] else []
     checkLeftTake = if (inbounds leftTake && containsOpponentPiece b c leftTake) then [Move current $ indexToPosition leftTake] else []
@@ -155,8 +155,8 @@ rookRays board colour (col, row) = [north, south, east, west]
   where
     north = genNorthRay board colour (col,row)
     south = genSouthRay board colour (col,row)
-    east = genEastRay board colour (col,row)
-    west = genWestRay board colour (col,row)
+    east  = genEastRay board colour (col,row)
+    west  = genWestRay board colour (col,row)
 
 bishopRays :: Board -> Colour -> Position -> [[Position]]
 bishopRays board colour (col, row) = [northEast, northWest, southEast, southWest]
@@ -166,9 +166,11 @@ bishopRays board colour (col, row) = [northEast, northWest, southEast, southWest
     southEast = genSouthEastRay board colour (col,row)
     southWest = genSouthWestRay board colour (col,row)
 
-genAllKnightMoves :: Board -> Colour -> [Move]
-genAllKnightMoves board col = concat $ V.toList $ V.map (genKnightMoves board col) knights
-  where knights = pieceIndexes (Piece col Knight) board
+genAllKnightMoves :: GameState -> Colour -> [Move]
+genAllKnightMoves gs col = concat $ V.toList $ V.map (genKnightMoves b col) knights
+  where
+    b = board gs
+    knights = pieceIndexes (Piece col Knight) b
 
 genKnightMoves :: Board -> Colour -> Int -> [Move]
 genKnightMoves board colour i = map moveFromCurr $ knightMoves board colour (col, row)
@@ -176,9 +178,11 @@ genKnightMoves board colour i = map moveFromCurr $ knightMoves board colour (col
     (col,row) = indexToPosition i
     moveFromCurr (a,b) = Move (col,row) (a, b)
  
-genAllRookMoves :: Board -> Colour -> [Move]
-genAllRookMoves board col = concat $ V.toList $ V.map (genRookMoves board col) rooks
-  where rooks = pieceIndexes (Piece col Rook) board
+genAllRookMoves :: GameState -> Colour -> [Move]
+genAllRookMoves gs col = concat $ V.toList $ V.map (genRookMoves b col) rooks
+  where 
+    rooks = pieceIndexes (Piece col Rook) b
+    b = board gs
 
 genRookMoves :: Board -> Colour -> Int -> [Move]
 genRookMoves board colour i = north ++ south ++ east ++ west
@@ -186,9 +190,12 @@ genRookMoves board colour i = north ++ south ++ east ++ west
     (col, row) = indexToPosition i
     [north, south, east, west] = fmap (rayToMoves (col,row)) $ rookRays board colour (col, row)
 
-genAllQueenMoves :: Board -> Colour -> [Move]
-genAllQueenMoves board col = concat $ V.toList $ V.map (genQueenMoves board col) queens
-  where queens = pieceIndexes (Piece col Queen) board
+genAllQueenMoves :: GameState -> Colour -> [Move]
+genAllQueenMoves gs col = concat $ V.toList $ V.map (genQueenMoves b col) queens
+  where
+    b = board gs
+    queens = pieceIndexes (Piece col Queen) b
+
 
 genQueenMoves :: Board -> Colour -> Int -> [Move]
 genQueenMoves board colour i = north ++ south ++ east ++ west ++ northEast ++ northWest ++ southEast ++ southWest
@@ -197,9 +204,11 @@ genQueenMoves board colour i = north ++ south ++ east ++ west ++ northEast ++ no
     [north, south, east, west] = fmap (rayToMoves (col,row)) $ rookRays board colour (col, row)
     [northEast, northWest, southEast, southWest] = fmap (rayToMoves (col,row)) $ bishopRays board colour (col, row)
 
-genAllBishopMoves :: Board -> Colour -> [Move]
-genAllBishopMoves board col = concat $ V.toList $ V.map (genBishopMoves board col) bishops
-  where bishops = pieceIndexes (Piece col Bishop) board
+genAllBishopMoves :: GameState -> Colour -> [Move]
+genAllBishopMoves gs col = concat $ V.toList $ V.map (genBishopMoves b col) bishops
+  where
+    b = board gs
+    bishops = pieceIndexes (Piece col Bishop) b
 
 genBishopMoves :: Board -> Colour -> Int -> [Move]
 genBishopMoves board colour i = northEast ++ northWest ++ southEast ++ southWest
@@ -227,17 +236,17 @@ genKingMoves gs colour i = (map moveFromCurr $ filter canMove $ filter inbounds 
     canMove (a,b) = case (board gs) `atPosition` (fromInt a, b) of
       Nothing -> True
       Just (Piece c p) -> c /= colour
-    longCastle = if canCastle gs colour Long i then [Castle colour Long] else []
-    shortCastle = if canCastle gs colour Short i then [Castle colour Short] else []
+    longCastle = if canCastle gs colour Long then [Castle colour Long] else []
+    shortCastle = if canCastle gs colour Short then [Castle colour Short] else []
 
-canCastle :: GameState -> Colour -> CastleType -> Int -> Bool
-canCastle gs White cty i = i == 4 && case cty of
+canCastle :: GameState -> Colour -> CastleType -> Bool
+canCastle gs White cty = case cty of
     Long -> CastlingRight White Long `elem` activeRights && all (isEmpty b) [1,2,3] 
     Short -> CastlingRight White Short `elem` activeRights && all (isEmpty b) [5,6]  
   where
     b = board gs
     activeRights = castling gs
-canCastle gs Black cty i = i == 60 && case cty of
+canCastle gs Black cty = case cty of
     Long -> CastlingRight Black Long `elem` activeRights && all (isEmpty b) [57,58,59] 
     Short -> CastlingRight Black Short `elem` activeRights && all (isEmpty b) [61,62]
   where

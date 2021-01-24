@@ -7,17 +7,17 @@ import Control.Monad.State
 import Data.Char (toUpper)
 import qualified Data.Set as S
 
-data PieceType = King | Queen | Rook | Bishop | Knight | Pawn deriving Eq
+data PieceType = King | Queen | Rook | Bishop | Knight | Pawn deriving (Eq, Ord)
 
 data Colour = White | Black deriving (Show, Eq, Ord)
 
 data Piece = Piece Colour PieceType deriving Eq
-data Move = Move Position Position | Castle Colour CastleType | Promote Position PieceType deriving (Eq, Show)
+data Move = Move Position Position | Castle Colour CastleType | Promote Position PieceType deriving (Eq, Show, Ord)
 
 newtype Board = Board (V.Vector (Maybe Piece))
 
 type Position = (Column, Row)
-data Column = A | B | C | D | E | F | G | H deriving (Show, Eq)
+data Column = A | B | C | D | E | F | G | H deriving (Show, Eq, Ord)
 
 toInt :: Column -> Int
 toInt A = 0
