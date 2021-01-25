@@ -73,7 +73,8 @@ removeCastlingRightsFor crs col = S.filter (\(CastlingRight c ty) -> c /= col) c
 
 loosesCastlingRights :: Board -> Move -> S.Set CastlingRight -> S.Set CastlingRight
 loosesCastlingRights b (Move src dst) activeRights | S.null activeRights = S.empty 
-                                                      | otherwise = case ty of
+                                                   | otherwise           =
+  case ty of
     King -> activeRights `removeCastlingRightsFor` colour
     Rook -> case (colour, col) of
       (White, A) -> S.delete (CastlingRight White Long)   activeRights
@@ -81,10 +82,17 @@ loosesCastlingRights b (Move src dst) activeRights | S.null activeRights = S.emp
       (White, H) -> S.delete (CastlingRight White Short)  activeRights
       (Black, H) -> S.delete (CastlingRight Black Short)  activeRights
       _ -> activeRights
-    _ -> activeRights
+    _ -> case dst of
+      (A, 1) -> S.delete (CastlingRight White Long)   activeRights
+      (A, 8) -> S.delete (CastlingRight Black Long)   activeRights
+      (H, 1) -> S.delete (CastlingRight White Short)  activeRights
+      (H, 8) -> S.delete (CastlingRight Black Short)  activeRights
+      _      -> activeRights
   where
     Just (Piece colour ty) = b `atPosition` src
-    (col, row) = src
+    (col, _) = src
+
+
 
 genAllPawnMoves :: GameState -> Colour -> [Move]
 genAllPawnMoves gs col = concat $ V.toList $ V.map (genPawnMoves b col) pawns
