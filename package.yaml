@@ -1,10 +1,10 @@
-name:                hask-chess
+name:                hen
 version:             0.1.0.0
-github:              "githubuser/hask-chess"
+github:              "nazrhom/hen"
 license:             BSD3
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2021 Author name here"
+author:              "Giovanni Garufi"
+maintainer:          "nazrhom@gmail.com"
+copyright:           "2021 Giovanni Garufi"
 
 extra-source-files:
 - README.md
@@ -31,7 +31,7 @@ library:
   source-dirs: src
 
 executables:
-  hask-chess-exe:
+  hen-exe:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -39,10 +39,10 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - hask-chess
+    - hen
 
 tests:
-  hask-chess-test:
+  hen-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -50,4 +50,4 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - hask-chess
+    - hen
