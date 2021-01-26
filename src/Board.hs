@@ -41,6 +41,19 @@ fromInt i = case i of
   7 -> H
   _ -> error "Column out of bounds"
 
+data CastleType = Long | Short deriving (Eq, Show, Ord)
+data CastlingRight = CastlingRight Colour CastleType deriving (Eq, Show, Ord)
+
+data GameState = GameState {
+  board :: Board,
+  active :: Colour,
+  castling :: S.Set CastlingRight,
+  enPassant :: Maybe Position,
+  halfMoveClock :: Int,
+  fullMove :: Int,
+  lastMove :: Maybe Move
+}
+
 type Row = Int
 
 positionToIndex :: Position -> Int
@@ -85,19 +98,6 @@ pieceTypeIndexes p (Board b) = (V.elemIndices (Just $ Piece White p) b, V.elemIn
 flipColour :: Colour -> Colour
 flipColour White = Black
 flipColour Black = White
-
-data CastleType = Long | Short deriving (Eq, Show, Ord)
-data CastlingRight = CastlingRight Colour CastleType deriving (Eq, Show, Ord)
-
-data GameState = GameState {
-  board :: Board,
-  active :: Colour,
-  castling :: S.Set CastlingRight,
-  enPassant :: Maybe Position,
-  halfMoveClock :: Int,
-  fullMove :: Int,
-  lastMove :: Maybe Move
-}
 
 instance Show PieceType where
   show King = "k"

@@ -3,8 +3,25 @@ module MoveGen where
 import Board
 import qualified Data.Vector as V
 import Data.List (delete)
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromJust)
 import qualified Data.Set as S
+import qualified Data.IntMap.Strict as M
+
+type KnightMap = M.IntMap [Position]
+
+knightMap :: KnightMap
+knightMap = foldl (\m k -> M.insert k (go k m) m) M.empty [0..63]
+  where
+    go k m = map (\(a,b) -> (fromInt a, b)) $ filter inbounds allMoves
+      where
+        (col, row) = indexToPosition k
+        c = toInt col
+        r = row
+        allMoves = [(c-1, r-2), (c-2, r-1)
+                  , (c-2, r+1), (c-1, r+2)
+                  , (c+1, r+2), (c+2, r+1)
+                  , (c+2, r-1), (c+1, r-2)]
+        inbounds (a,b) = (a >= 0 && a <= 7) && (b >= 1 && b <= 8)
 
 genMoves :: GameState -> Colour -> [Move]
 genMoves gs col =
@@ -92,8 +109,6 @@ loosesCastlingRights b (Move src dst) activeRights | S.null activeRights = S.emp
     Just (Piece colour ty) = b `atPosition` src
     (col, _) = src
 
-
-
 genAllPawnMoves :: GameState -> Colour -> [Move]
 genAllPawnMoves gs col = concat $ V.toList $ V.map (genPawnMoves b col) pawns
   where
@@ -144,17 +159,10 @@ containsOpponentPiece b c i | i < 0 || i > 63 = error "debug: containsOpponentPi
   Nothing -> False
   Just (Piece c' p) -> c /= c'
 
-knightMoves :: Board -> Colour -> Position -> [Position]
-knightMoves board colour (col, row) = map (\(a,b) -> (fromInt a, b)) $ filter canMove $ filter inbounds allMoves
+knightMoves :: Board -> Colour -> Int -> [Position]
+knightMoves board colour i = filter canMove $ fromJust $ M.lookup i knightMap
   where
-    c = toInt col
-    r = row
-    allMoves = [(c-1, r-2), (c-2, r-1)
-              , (c-2, r+1), (c-1, r+2)
-              , (c+1, r+2), (c+2, r+1)
-              , (c+2, r-1), (c+1, r-2)]
-    inbounds (a,b) = (a >= 0 && a <= 7) && (b >= 1 && b <= 8)
-    canMove (a,b) = case board `atPosition` (fromInt a, b) of 
+    canMove pos = case board `atPosition` pos of
       Nothing -> True
       Just (Piece c p) -> c /= colour
 
@@ -181,7 +189,7 @@ genAllKnightMoves gs col = concat $ V.toList $ V.map (genKnightMoves b col) knig
     knights = pieceIndexes (Piece col Knight) b
 
 genKnightMoves :: Board -> Colour -> Int -> [Move]
-genKnightMoves board colour i = map moveFromCurr $ knightMoves board colour (col, row)
+genKnightMoves board colour i = map moveFromCurr $ knightMoves board colour i
   where
     (col,row) = indexToPosition i
     moveFromCurr (a,b) = Move (col,row) (a, b)
@@ -249,25 +257,26 @@ genKingMoves gs colour i = (map moveFromCurr $ filter canMove $ filter inbounds 
 
 canCastle :: GameState -> Colour -> CastleType -> Bool
 canCastle gs White cty = case cty of
-    Long -> CastlingRight White Long `elem` activeRights && all (isEmpty b) [1,2,3] 
-    Short -> CastlingRight White Short `elem` activeRights && all (isEmpty b) [5,6]  
+    Long -> CastlingRight White Long `elem` activeRights && all (isEmpty b) [1,2,3] && all null (map (attackers White (board gs)) [1,2,3])
+    Short -> CastlingRight White Short `elem` activeRights && all (isEmpty b) [5,6] && all null (map (attackers White (board gs)) [5,6])
   where
     b = board gs
     activeRights = castling gs
 canCastle gs Black cty = case cty of
-    Long -> CastlingRight Black Long `elem` activeRights && all (isEmpty b) [57,58,59] 
-    Short -> CastlingRight Black Short `elem` activeRights && all (isEmpty b) [61,62]
+    Long -> CastlingRight Black Long `elem` activeRights && all (isEmpty b) [57,58,59] && all null (map (attackers White (board gs)) [57,58,59])
+    Short -> CastlingRight Black Short `elem` activeRights && all (isEmpty b) [61,62] && all null (map (attackers White (board gs)) [61,62])
   where
     b = board gs
     activeRights = castling gs
 
-attackers :: Int -> Colour -> Board -> [Piece]
-attackers i colour board = inLOS
+attackers :: Colour -> Board -> Int -> [Piece]
+attackers colour board i = inLOS ++ knights
   where
     (col, row) = indexToPosition i
     inLOS = catMaybes $ fmap ((board `atPosition`) . last) $ straight ++ diag 
     straight = filter (/= []) $ rookRays board colour (col, row) 
     diag = filter (/= []) $ bishopRays board colour (col, row)
+    knights = catMaybes $ filter (== (Just $ Piece (flipColour colour) Knight)) $ map (board `atPosition`) $ fromJust $ M.lookup i knightMap
 
 rayToMoves :: Position -> [Position] -> [Move]
 rayToMoves src dests = uncurry Move <$> [(src, dest) | dest <- dests]
