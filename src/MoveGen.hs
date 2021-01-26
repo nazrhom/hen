@@ -25,12 +25,12 @@ knightMap = foldl (\m k -> M.insert k (go k m) m) M.empty [0..63]
 
 genMoves :: GameState -> Colour -> [Move]
 genMoves gs col =
-     genAllPawnMoves gs col
-  ++ genAllKnightMoves gs col
-  ++ genAllBishopMoves gs col
-  ++ genAllRookMoves gs col
+     genAllKingMoves gs col
   ++ genAllQueenMoves gs col
-  ++ genAllKingMoves gs col
+  ++ genAllRookMoves gs col
+  ++ genAllBishopMoves gs col
+  ++ genAllKnightMoves gs col
+  ++ genAllPawnMoves gs col
 
 applyAll :: GameState -> [Move] -> [GameState]
 applyAll gs moves = map (apply gs) moves
