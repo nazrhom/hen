@@ -13,7 +13,7 @@ logFilePath = "./log.txt"
 
 main :: IO ()
 main = do
-  let depth = 5
+  let depth = 6
   processLine depth initialGameState
 
 printAndLog :: String -> IO ()

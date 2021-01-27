@@ -25,7 +25,13 @@ evaluateBoard board@(Board b) =
     bishopsq = computeSquare bishopsTable (wb, bb)
     rooksq = computeSquare rooksTable (wr, br)
     queensq = computeSquare queensTable (wq, bq)
-    kingsq = computeSquare kingsTable (wk, bk)
+    kingsq = computeSquare (if isEndGame then kingsEndGameTable else kingsTable) (wk, bk)
+
+    isEndGame = case (null wq, null bq) of
+      (True, True) -> True
+      (True, _)    -> (sum $ map length [bn, bb, br]) <= 1
+      (_, True)    -> (sum $ map length [wn, wb, wr]) <= 1
+      (_,_)        -> False
 
     (wp, bp) = pieceTypeIndexes Pawn board
     (wn, bn) = pieceTypeIndexes Knight board
@@ -100,3 +106,13 @@ kingsTable = V.fromList [
   -30,-40,-40,-50,-50,-40,-40,-30
   ]
 
+kingsEndGameTable = V.fromList [
+  -50,-40,-30,-20,-20,-30,-40,-50,
+  -30,-20,-10,  0,  0,-10,-20,-30,
+  -30,-10, 20, 30, 30, 20,-10,-30,
+  -30,-10, 30, 40, 40, 30,-10,-30,
+  -30,-10, 30, 40, 40, 30,-10,-30,
+  -30,-10, 20, 30, 30, 20,-10,-30,
+  -30,-30,  0,  0,  0,  0,-30,-30,
+  -50,-30,-30,-30,-30,-30,-30,-50
+  ]
