@@ -34,9 +34,6 @@ evaluateBoard board@(Board b) =
     (wq, bq) = pieceTypeIndexes Queen board
     (wk, bk) = pieceTypeIndexes King board
 
-
-knightOpening = move (G,1) (F,3) $ move (E,7) (E,5) (move (E,2) (E,4) initialBoard)
-
 pawnsTable = V.fromList [
   0,  0,  0,  0,  0,  0,  0,  0,
   5, 10, 10,-20,-20, 10, 10,  5,

@@ -8,6 +8,7 @@ import qualified Data.Set as S
 import qualified Data.IntMap.Strict as M
 
 type KnightMap = M.IntMap [Position]
+type KingMap = M.IntMap [Position]
 
 knightMap :: KnightMap
 knightMap = foldl (\m k -> M.insert k (go k m) m) M.empty [0..63]
@@ -21,6 +22,19 @@ knightMap = foldl (\m k -> M.insert k (go k m) m) M.empty [0..63]
                   , (c-2, r+1), (c-1, r+2)
                   , (c+1, r+2), (c+2, r+1)
                   , (c+2, r-1), (c+1, r-2)]
+        inbounds (a,b) = (a >= 0 && a <= 7) && (b >= 1 && b <= 8)
+
+kingMap :: KingMap
+kingMap = foldl (\m k -> M.insert k (go k m) m) M.empty [0..63]
+  where
+    go k m = map (\(a,b) -> (fromInt a, b)) $ filter inbounds allMoves
+      where
+        (col,r) = indexToPosition k
+        c = toInt col
+        allMoves = [(c, r+1), (c+1, r+1)
+                  , (c+1, r), (c+1, r-1)
+                  , (c, r-1), (c-1, r-1)
+                  , (c-1, r), (c-1, r+1)]
         inbounds (a,b) = (a >= 0 && a <= 7) && (b >= 1 && b <= 8)
 
 genMoves :: GameState -> Colour -> [Move]
@@ -238,18 +252,11 @@ genAllKingMoves gs col = concat $ V.toList $ V.map (genKingMoves gs col) kings
     kings = pieceIndexes (Piece col King) (board gs)
 
 genKingMoves :: GameState -> Colour -> Int -> [Move]
-genKingMoves gs colour i = (map moveFromCurr $ filter canMove $ filter inbounds allMoves) ++ longCastle ++ shortCastle
+genKingMoves gs colour i = (map moveFromCurr $ filter canMove $ fromJust $ M.lookup i kingMap) ++ longCastle ++ shortCastle
   where
-    (col,r) = indexToPosition i
-    c = toInt col
-    allMoves = [(c, r+1), (c+1, r+1)
-              , (c+1, r), (c+1, r-1)
-              , (c, r-1), (c-1, r-1)
-              , (c-1, r), (c-1, r+1)]
-    inbounds (a,b) = (a >= 0 && a <= 7) && (b >= 1 && b <= 8)
-    moveFromCurr (a,b) = Move (col,r) (fromInt a, b)
-
-    canMove (a,b) = case (board gs) `atPosition` (fromInt a, b) of
+    (col, row) = indexToPosition i
+    moveFromCurr pos = Move (col,row) pos
+    canMove pos = case (board gs) `atPosition` pos of
       Nothing -> True
       Just (Piece c p) -> c /= colour
     longCastle = if canCastle gs colour Long then [Castle colour Long] else []
