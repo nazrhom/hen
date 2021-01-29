@@ -88,7 +88,7 @@ parseFEN = do
   moves <- read <$> many1 digit
   return GameState 
     { 
-      board = Board $ V.fromList $ invertLines . concat . concat  $ fen,
+      board = fromVec $ BoardVec $ V.fromList $ invertLines . concat . concat  $ fen,
       active = colour,
       castling = castling,
       enPassant = enPassant,

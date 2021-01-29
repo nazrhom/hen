@@ -3,8 +3,17 @@ module Evaluation where
 import Board
 import qualified Data.Vector as V
 
+invertIndex :: Int -> Int
+invertIndex i = 63 - i
+
+atIndexes :: V.Vector Int -> V.Vector Int -> V.Vector Int
+atIndexes v idxs = V.map (v V.!) idxs
+
+computeSquare :: V.Vector Int -> (V.Vector Int, V.Vector Int) -> Int
+computeSquare table (whitePieces, blackPieces) = (V.foldl' (+) 0 (table `atIndexes` whitePieces) - V.foldl' (+) 0 (table `atIndexes` V.map invertIndex blackPieces))
+
 evaluateBoard :: Board -> Int
-evaluateBoard board@(Board b) = 
+evaluateBoard board =
     material + pawnsq + knightsq + bishopsq + rooksq + queensq + kingsq
   where
     material = 100*(length wp - length bp)
@@ -13,12 +22,6 @@ evaluateBoard board@(Board b) =
               +500*(length wr - length br)
               +900*(length wq - length bq)
               +20000*(length wk - length bk)
-    
-    invertIndex :: Int -> Int
-    invertIndex i = 63 - i
-
-    computeSquare :: V.Vector Int -> (V.Vector Int, V.Vector Int) -> Int
-    computeSquare table (whitePieces, blackPieces) = (sum (table `atIndexes` whitePieces) - sum (table `atIndexes` V.map invertIndex blackPieces))
 
     pawnsq = computeSquare pawnsTable (wp, bp)
     knightsq = computeSquare knightsTable (wn, bn)

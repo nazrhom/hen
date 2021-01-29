@@ -226,7 +226,6 @@ genAllQueenMoves gs col = concat $ V.toList $ V.map (genQueenMoves b col) queens
     b = board gs
     queens = pieceIndexes (Piece col Queen) b
 
-
 genQueenMoves :: Board -> Colour -> Int -> [Move]
 genQueenMoves board colour i = north ++ south ++ east ++ west ++ northEast ++ northWest ++ southEast ++ southWest
   where

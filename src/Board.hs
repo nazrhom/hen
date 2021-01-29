@@ -7,6 +7,9 @@ import Control.Monad.State
 import Data.Char (toUpper)
 import qualified Data.Set as S
 
+import Data.Word
+import Data.Bits
+
 data PieceType = King | Queen | Rook | Bishop | Knight | Pawn deriving (Eq, Ord)
 
 data Colour = White | Black deriving (Show, Eq, Ord)
@@ -14,7 +17,103 @@ data Colour = White | Black deriving (Show, Eq, Ord)
 data Piece = Piece Colour PieceType deriving Eq
 data Move = Move Position Position | Castle Colour CastleType | Promote Position PieceType deriving (Eq, Show, Ord)
 
-newtype Board = Board (V.Vector (Maybe Piece))
+newtype BoardVec = BoardVec (V.Vector (Maybe Piece))
+
+data Board = Board {
+    whitePawns :: Word64
+  , blackPawns :: Word64
+  , whiteKnights :: Word64
+  , blackKnights :: Word64
+  , whiteBishops :: Word64
+  , blackBishops :: Word64
+  , whiteRooks :: Word64
+  , blackRooks :: Word64
+  , whiteQueens :: Word64
+  , blackQueens :: Word64
+  , whiteKings :: Word64
+  , blackKings :: Word64
+  , allWhitePieces :: Word64
+  , allBlackPieces :: Word64
+  , allPieces :: Word64
+}
+
+indexesToBitBoard :: V.Vector Int -> Word64
+indexesToBitBoard xs = go (V.toList xs) 0
+  where
+    go (x:xs) b = go xs $ b `setBit` x
+    go []     b = b
+
+fromVec :: BoardVec -> Board
+fromVec board = Board {
+        whitePawns = whitePawns
+      , blackPawns = blackPawns
+      , whiteKnights = whiteKnights
+      , blackKnights = blackKnights
+      , whiteBishops = whiteBishops
+      , blackBishops = blackBishops
+      , whiteRooks = whiteRooks
+      , blackRooks = blackRooks
+      , whiteQueens = whiteQueens
+      , blackQueens = blackQueens
+      , whiteKings = whiteKings
+      , blackKings = blackKings
+      , allWhitePieces = allWhitePieces
+      , allBlackPieces = allBlackPieces
+      , allPieces = allPieces
+    }
+  where
+    whitePawns = indexesToBitBoard wp
+    blackPawns = indexesToBitBoard bp
+    whiteKnights = indexesToBitBoard wn
+    blackKnights = indexesToBitBoard bn
+    whiteBishops = indexesToBitBoard wb
+    blackBishops = indexesToBitBoard bb
+    whiteRooks = indexesToBitBoard wr
+    blackRooks = indexesToBitBoard br
+    whiteQueens = indexesToBitBoard wq
+    blackQueens = indexesToBitBoard bq
+    whiteKings = indexesToBitBoard wk
+    blackKings = indexesToBitBoard bk
+    allWhitePieces = whitePawns .|. whiteKnights .|. whiteBishops .|. whiteRooks .|. whiteQueens .|. whiteKings
+    allBlackPieces = blackPawns .|. blackKnights .|. blackBishops .|. blackRooks .|. blackQueens .|. blackKings
+    allPieces = allWhitePieces .|. allBlackPieces
+    (wp, bp) = pieceTypeIndexesVec Pawn board
+    (wn, bn) = pieceTypeIndexesVec Knight board
+    (wb, bb) = pieceTypeIndexesVec Bishop board
+    (wr, br) = pieceTypeIndexesVec Rook board
+    (wq, bq) = pieceTypeIndexesVec Queen board
+    (wk, bk) = pieceTypeIndexesVec King board
+
+toVec :: Board -> BoardVec
+toVec board = execState go (BoardVec $ V.replicate 64 Nothing)
+  where
+    go = do
+      placePieces wp (Piece White Pawn)
+      placePieces wn (Piece White Knight)
+      placePieces wb (Piece White Bishop)
+      placePieces wr (Piece White Rook)
+      placePieces wq (Piece White Queen)
+      placePieces wk (Piece White King)
+      placePieces bp (Piece Black Pawn)
+      placePieces bn (Piece Black Knight)
+      placePieces br (Piece Black Rook)
+      placePieces bb (Piece Black Bishop)
+      placePieces bq (Piece Black Queen)
+      placePieces bk (Piece Black King)
+
+    (wp, bp) = pieceTypeIndexes Pawn board
+    (wn, bn) = pieceTypeIndexes Knight board
+    (wb, bb) = pieceTypeIndexes Bishop board
+    (wr, br) = pieceTypeIndexes Rook board
+    (wq, bq) = pieceTypeIndexes Queen board
+    (wk, bk) = pieceTypeIndexes King board
+
+    placePieces pi p = do
+      mapM (uncurry placePiece) $ zip (repeat p) $ V.toList pi
+
+    placePiece p i = do
+      b <- get
+      put $ placeVec p (indexToPosition i) b
 
 type Position = (Column, Row)
 data Column = A | B | C | D | E | F | G | H deriving (Show, Eq, Ord)
@@ -63,11 +162,58 @@ indexToPosition :: Int -> Position
 indexToPosition i | i >= 0 && i <= 63 = (fromInt (i `rem` 8), (i `quot` 8) + 1)
                   | otherwise = error "no position"
 
+placeVec :: Piece -> Position -> BoardVec -> BoardVec
+placeVec piece pos (BoardVec board) = BoardVec $ board V.// [(positionToIndex pos, Just piece)]
+
 place :: Piece -> Position -> Board -> Board
-place piece pos (Board board) = Board $ board V.// [(positionToIndex pos, Just piece)]
+place piece pos bb = case piece of
+  (Piece White Pawn)   -> bb { whitePawns=whitePawns bb `setBit` i    , allWhitePieces=allWhitePieces bb `setBit` i, allPieces=allPieces bb `setBit` i }
+  (Piece White Knight) -> bb { whiteKnights=whiteKnights bb `setBit` i, allWhitePieces=allWhitePieces bb `setBit` i, allPieces=allPieces bb `setBit` i }
+  (Piece White Bishop) -> bb { whiteBishops=whiteBishops bb `setBit` i, allWhitePieces=allWhitePieces bb `setBit` i, allPieces=allPieces bb `setBit` i }
+  (Piece White Rook)   -> bb { whiteRooks=whiteRooks bb `setBit` i    , allWhitePieces=allWhitePieces bb `setBit` i, allPieces=allPieces bb `setBit` i }
+  (Piece White Queen)  -> bb { whiteQueens=whiteQueens bb `setBit` i  , allWhitePieces=allWhitePieces bb `setBit` i, allPieces=allPieces bb `setBit` i }
+  (Piece White King)   -> bb { whiteKings=whiteKings bb `setBit` i    , allWhitePieces=allWhitePieces bb `setBit` i, allPieces=allPieces bb `setBit` i }
+  (Piece Black Pawn)   -> bb { blackPawns=blackPawns bb `setBit` i    , allBlackPieces=allBlackPieces bb `setBit` i, allPieces=allPieces bb `setBit` i }
+  (Piece Black Knight) -> bb { blackKnights=blackKnights bb `setBit` i, allBlackPieces=allBlackPieces bb `setBit` i, allPieces=allPieces bb `setBit` i }
+  (Piece Black Bishop) -> bb { blackBishops=blackBishops bb `setBit` i, allBlackPieces=allBlackPieces bb `setBit` i, allPieces=allPieces bb `setBit` i }
+  (Piece Black Rook)   -> bb { blackRooks=blackRooks bb `setBit` i    , allBlackPieces=allBlackPieces bb `setBit` i, allPieces=allPieces bb `setBit` i }
+  (Piece Black Queen)  -> bb { blackQueens=blackQueens bb `setBit` i  , allBlackPieces=allBlackPieces bb `setBit` i, allPieces=allPieces bb `setBit` i }
+  (Piece Black King)   -> bb { blackKings=blackKings bb `setBit` i    , allBlackPieces=allBlackPieces bb `setBit` i, allPieces=allPieces bb `setBit` i }
+  where
+    i = positionToIndex pos
+
+removeVec :: Position -> BoardVec -> BoardVec
+removeVec pos (BoardVec board) = BoardVec $ board V.// [(positionToIndex pos, Nothing)]
 
 remove :: Position -> Board -> Board
-remove pos (Board board) = Board $ board V.// [(positionToIndex pos, Nothing)]
+remove pos bb =
+    if allPieces bb `testBit` i
+      then if allWhitePieces bb `testBit` i then
+        bb {
+            whitePawns=whitePawns bb `clearBit` i
+          , whiteKnights=whiteKnights bb `clearBit` i
+          , whiteBishops=whiteBishops bb `clearBit` i
+          , whiteRooks=whiteRooks bb `clearBit` i
+          , whiteQueens=whiteQueens bb `clearBit` i
+          , whiteKings=whiteKings bb `clearBit` i
+          , allWhitePieces=allWhitePieces bb `clearBit` i
+          , allPieces=allPieces bb `clearBit` i
+        }
+      else if allBlackPieces bb `testBit` i then
+        bb {
+            blackPawns=blackPawns bb `clearBit` i
+          , blackKnights=blackKnights bb `clearBit` i
+          , blackBishops=blackBishops bb `clearBit` i
+          , blackRooks=blackRooks bb `clearBit` i
+          , blackQueens=blackQueens bb `clearBit` i
+          , blackKings=blackKings bb `clearBit` i
+          , allBlackPieces=allBlackPieces bb `clearBit` i
+          , allPieces=allPieces bb `clearBit` i
+        }
+      else error "remove"
+    else bb
+  where
+    i = positionToIndex pos
 
 move :: Position -> Position -> Board -> Board
 move src dest board = case board `atPosition` src of 
@@ -75,25 +221,69 @@ move src dest board = case board `atPosition` src of
       ++ show board
       ++ "\nsrc:" ++ show src
       ++ "\ndest:" ++ show dest
-  Just piece -> remove src (place piece dest board) 
+  Just piece -> remove src (place piece dest (remove dest board))
 
 atPosition :: Board -> Position -> Maybe Piece
 atPosition board pos = board `atIndex` (positionToIndex pos)
 
-atIndex :: Board -> Int -> Maybe Piece
-atIndex (Board board) idx = board V.! idx
+atIndexVec :: BoardVec -> Int -> Maybe Piece
+atIndexVec (BoardVec board) idx = board V.! idx
 
-atIndexes :: V.Vector a -> V.Vector Int -> V.Vector a
-atIndexes v idxs = V.map (v V.!) idxs
+atIndex :: Board -> Int -> Maybe Piece
+atIndex bb i =
+  if not (allPieces bb `testBit` i) then Nothing
+  else
+  if allWhitePieces bb `testBit` i
+    then if whitePawns bb `testBit` i then Just $ Piece White Pawn
+      else if whiteKnights bb `testBit` i then Just $ Piece White Knight
+      else if whiteBishops bb `testBit` i then Just $ Piece White Bishop
+      else if whiteRooks bb `testBit` i then Just $ Piece White Rook
+      else if whiteQueens bb `testBit` i then Just $ Piece White Queen
+      else if whiteKings bb `testBit` i then Just $ Piece White King
+      else error "indexBB white"
+  else if allBlackPieces bb `testBit` i
+    then if blackPawns bb `testBit` i then Just $ Piece Black Pawn
+      else if blackKnights bb `testBit` i then Just $ Piece Black Knight
+      else if blackBishops bb `testBit` i then Just $ Piece Black Bishop
+      else if blackRooks bb `testBit` i then Just $ Piece Black Rook
+      else if blackQueens bb `testBit` i then Just $ Piece Black Queen
+      else if blackKings bb `testBit` i then Just $ Piece Black King
+      else error "indexBB black"
+  else error "indexBB unknown"
 
 emptyBoard :: Board
-emptyBoard = Board $ V.replicate 64 Nothing
+emptyBoard = fromVec $ BoardVec $ V.replicate 64 Nothing
+
+pieceIndexesVec :: Piece -> BoardVec -> V.Vector Int
+pieceIndexesVec p (BoardVec b) = V.elemIndices (Just p) b
 
 pieceIndexes :: Piece -> Board -> V.Vector Int
-pieceIndexes p (Board b) = V.elemIndices (Just p) b
+pieceIndexes p bb = case p of
+  (Piece White Pawn)   -> toIndexVector $ whitePawns bb
+  (Piece White Knight) -> toIndexVector $ whiteKnights bb
+  (Piece White Bishop) -> toIndexVector $ whiteBishops bb
+  (Piece White Rook)   -> toIndexVector $ whiteRooks bb
+  (Piece White Queen)  -> toIndexVector $ whiteQueens bb
+  (Piece White King)   -> toIndexVector $ whiteKings bb
+  (Piece Black Pawn)   -> toIndexVector $ blackPawns bb
+  (Piece Black Knight) -> toIndexVector $ blackKnights bb
+  (Piece Black Bishop) -> toIndexVector $ blackBishops bb
+  (Piece Black Rook)   -> toIndexVector $ blackRooks bb
+  (Piece Black Queen)  -> toIndexVector $ blackQueens bb
+  (Piece Black King)   -> toIndexVector $ blackKings bb
+
+toIndexVector :: Word64 -> V.Vector Int
+toIndexVector b = V.fromList $ go b []
+  where
+    go b l = if zeros == 64 then l else go (b `clearBit` zeros) (zeros:l)
+     where
+        zeros = countTrailingZeros b
+
+pieceTypeIndexesVec :: PieceType -> BoardVec -> (V.Vector Int, V.Vector Int)
+pieceTypeIndexesVec p (BoardVec b) = (V.elemIndices (Just $ Piece White p) b, V.elemIndices (Just $ Piece Black p) b)
 
 pieceTypeIndexes :: PieceType -> Board -> (V.Vector Int, V.Vector Int)
-pieceTypeIndexes p (Board b) = (V.elemIndices (Just $ Piece White p) b, V.elemIndices (Just $ Piece Black p) b)
+pieceTypeIndexes p bb = (pieceIndexes (Piece White p) bb , pieceIndexes (Piece Black p) bb)
 
 flipColour :: Colour -> Colour
 flipColour White = Black
@@ -111,8 +301,8 @@ instance Show Piece where
   show (Piece White p) = map toUpper (show p)
   show (Piece Black p) = show p
 
-instance Show Board where
-  show (Board b) = go  b
+instance Show BoardVec where
+  show (BoardVec b) = go  b
     where
       go :: (V.Vector (Maybe Piece)) -> String
       go b = if V.null b then "" else 
@@ -121,6 +311,9 @@ instance Show Board where
       showSquare :: Maybe Piece -> String
       showSquare (Just p) = show p
       showSquare Nothing = "."
+
+instance Show Board where
+  show b = show $ toVec b
 
 initialBoard :: Board
 initialBoard = execState placeInitialPieces emptyBoard
