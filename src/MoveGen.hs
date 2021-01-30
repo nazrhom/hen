@@ -124,7 +124,7 @@ loosesCastlingRights b (Move src dst) activeRights | S.null activeRights = S.emp
     (col, _) = src
 
 genAllPawnMoves :: GameState -> Colour -> [Move]
-genAllPawnMoves gs col = concat $ V.toList $ V.map (genPawnMoves b col) pawns
+genAllPawnMoves gs col = concatMap (genPawnMoves b col) pawns
   where
     b = board gs
     pawns = pieceIndexes (Piece col Pawn) b
@@ -197,7 +197,7 @@ bishopRays board colour (col, row) = [northEast, northWest, southEast, southWest
     southWest = genSouthWestRay board colour (col,row)
 
 genAllKnightMoves :: GameState -> Colour -> [Move]
-genAllKnightMoves gs col = concat $ V.toList $ V.map (genKnightMoves b col) knights
+genAllKnightMoves gs col = concatMap (genKnightMoves b col) knights
   where
     b = board gs
     knights = pieceIndexes (Piece col Knight) b
@@ -209,7 +209,7 @@ genKnightMoves board colour i = map moveFromCurr $ knightMoves board colour i
     moveFromCurr (a,b) = Move (col,row) (a, b)
  
 genAllRookMoves :: GameState -> Colour -> [Move]
-genAllRookMoves gs col = concat $ V.toList $ V.map (genRookMoves b col) rooks
+genAllRookMoves gs col = concatMap (genRookMoves b col) rooks
   where 
     rooks = pieceIndexes (Piece col Rook) b
     b = board gs
@@ -221,7 +221,7 @@ genRookMoves board colour i = north ++ south ++ east ++ west
     [north, south, east, west] = fmap (rayToMoves (col,row)) $ rookRays board colour (col, row)
 
 genAllQueenMoves :: GameState -> Colour -> [Move]
-genAllQueenMoves gs col = concat $ V.toList $ V.map (genQueenMoves b col) queens
+genAllQueenMoves gs col = concatMap (genQueenMoves b col) queens
   where
     b = board gs
     queens = pieceIndexes (Piece col Queen) b
@@ -234,7 +234,7 @@ genQueenMoves board colour i = north ++ south ++ east ++ west ++ northEast ++ no
     [northEast, northWest, southEast, southWest] = fmap (rayToMoves (col,row)) $ bishopRays board colour (col, row)
 
 genAllBishopMoves :: GameState -> Colour -> [Move]
-genAllBishopMoves gs col = concat $ V.toList $ V.map (genBishopMoves b col) bishops
+genAllBishopMoves gs col = concatMap (genBishopMoves b col) bishops
   where
     b = board gs
     bishops = pieceIndexes (Piece col Bishop) b
@@ -246,7 +246,7 @@ genBishopMoves board colour i = northEast ++ northWest ++ southEast ++ southWest
     [northEast, northWest, southEast, southWest] = fmap (rayToMoves (col,row)) $ bishopRays board colour (col, row)
 
 genAllKingMoves :: GameState -> Colour -> [Move]
-genAllKingMoves gs col = concat $ V.toList $ V.map (genKingMoves gs col) kings
+genAllKingMoves gs col = concatMap (genKingMoves gs col) kings
   where
     kings = pieceIndexes (Piece col King) (board gs)
 

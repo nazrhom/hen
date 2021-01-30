@@ -109,7 +109,7 @@ toVec board = execState go (BoardVec $ V.replicate 64 Nothing)
     (wk, bk) = pieceTypeIndexes King board
 
     placePieces pi p = do
-      mapM (uncurry placePiece) $ zip (repeat p) $ V.toList pi
+      mapM (uncurry placePiece) $ zip (repeat p) $ pi
 
     placePiece p i = do
       b <- get
@@ -257,7 +257,7 @@ emptyBoard = fromVec $ BoardVec $ V.replicate 64 Nothing
 pieceIndexesVec :: Piece -> BoardVec -> V.Vector Int
 pieceIndexesVec p (BoardVec b) = V.elemIndices (Just p) b
 
-pieceIndexes :: Piece -> Board -> V.Vector Int
+pieceIndexes :: Piece -> Board -> [Int]
 pieceIndexes p bb = case p of
   (Piece White Pawn)   -> toIndexVector $ whitePawns bb
   (Piece White Knight) -> toIndexVector $ whiteKnights bb
@@ -272,8 +272,8 @@ pieceIndexes p bb = case p of
   (Piece Black Queen)  -> toIndexVector $ blackQueens bb
   (Piece Black King)   -> toIndexVector $ blackKings bb
 
-toIndexVector :: Word64 -> V.Vector Int
-toIndexVector b = V.fromList $ go b []
+toIndexVector :: Word64 -> [Int]
+toIndexVector b = go b []
   where
     go b l = if zeros == 64 then l else go (b `clearBit` zeros) (zeros:l)
      where
@@ -282,7 +282,7 @@ toIndexVector b = V.fromList $ go b []
 pieceTypeIndexesVec :: PieceType -> BoardVec -> (V.Vector Int, V.Vector Int)
 pieceTypeIndexesVec p (BoardVec b) = (V.elemIndices (Just $ Piece White p) b, V.elemIndices (Just $ Piece Black p) b)
 
-pieceTypeIndexes :: PieceType -> Board -> (V.Vector Int, V.Vector Int)
+pieceTypeIndexes :: PieceType -> Board -> ([Int], [Int])
 pieceTypeIndexes p bb = (pieceIndexes (Piece White p) bb , pieceIndexes (Piece Black p) bb)
 
 flipColour :: Colour -> Colour

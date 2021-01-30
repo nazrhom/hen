@@ -2,15 +2,18 @@ module Evaluation where
 
 import Board
 import qualified Data.Vector as V
+import Data.List
 
 invertIndex :: Int -> Int
 invertIndex i = 63 - i
 
-atIndexes :: V.Vector Int -> V.Vector Int -> V.Vector Int
-atIndexes v idxs = V.map (v V.!) idxs
+{-# INLINE atIndexes #-}
+atIndexes :: V.Vector Int -> [Int] -> [Int]
+atIndexes v idxs = map (v V.!) idxs
 
-computeSquare :: V.Vector Int -> (V.Vector Int, V.Vector Int) -> Int
-computeSquare table (whitePieces, blackPieces) = (V.foldl' (+) 0 (table `atIndexes` whitePieces) - V.foldl' (+) 0 (table `atIndexes` V.map invertIndex blackPieces))
+{-# INLINE computeSquare #-}
+computeSquare :: (V.Vector Int, V.Vector Int) -> ([Int], [Int]) -> Int
+computeSquare (whiteTable, blackTable) (whitePieces, blackPieces) = (foldr (+) 0 (whiteTable `atIndexes` whitePieces) - foldr (+) 0 (blackTable `atIndexes` blackPieces))
 
 evaluateBoard :: Board -> Int
 evaluateBoard board =
@@ -23,12 +26,12 @@ evaluateBoard board =
               +900*(length wq - length bq)
               +20000*(length wk - length bk)
 
-    pawnsq = computeSquare pawnsTable (wp, bp)
-    knightsq = computeSquare knightsTable (wn, bn)
-    bishopsq = computeSquare bishopsTable (wb, bb)
-    rooksq = computeSquare rooksTable (wr, br)
-    queensq = computeSquare queensTable (wq, bq)
-    kingsq = computeSquare (if isEndGame then kingsEndGameTable else kingsTable) (wk, bk)
+    pawnsq = computeSquare (whitePawnsTable, blackPawnsTable) (wp, bp)
+    knightsq = computeSquare (whiteKnightsTable, blackKnightsTable) (wn, bn)
+    bishopsq = computeSquare (whiteBishopsTable, blackBishopsTable) (wb, bb)
+    rooksq = computeSquare (whiteRooksTable, blackRooksTable) (wr, br)
+    queensq = computeSquare (whiteQueensTable, blackQueensTable) (wq, bq)
+    kingsq = computeSquare (if isEndGame then (whiteKingsEndGameTable, blackKingsEndGameTable) else (whiteKingsTable, blackKingsTable)) (wk, bk)
 
     isEndGame = case (null wq, null bq) of
       (True, True) -> True
@@ -54,6 +57,9 @@ pawnsTable = V.fromList [
   0,  0,  0,  0,  0,  0,  0,  0
   ]
 
+whitePawnsTable = pawnsTable
+blackPawnsTable = V.reverse pawnsTable
+
 knightsTable = V.fromList [
   -50,-40,-30,-30,-30,-30,-40,-50,
   -40,-20,  0,  5,  5,  0,-20,-40,
@@ -64,6 +70,9 @@ knightsTable = V.fromList [
   -40,-20,  0,  0,  0,  0,-20,-40,
   -50,-40,-30,-30,-30,-30,-40,-50
   ]
+
+whiteKnightsTable = knightsTable
+blackKnightsTable = V.reverse knightsTable
 
 bishopsTable = V.fromList [
   -20,-10,-10,-10,-10,-10,-10,-20,
@@ -76,6 +85,9 @@ bishopsTable = V.fromList [
   -20,-10,-10,-10,-10,-10,-10,-20
   ]
 
+whiteBishopsTable = bishopsTable
+blackBishopsTable = V.reverse bishopsTable
+
 rooksTable = V.fromList [
   0,  0,  0,  5,  5,  0,  0,  0,
   -5,  0,  0,  0,  0,  0,  0, -5,
@@ -86,6 +98,9 @@ rooksTable = V.fromList [
   5, 10, 10, 10, 10, 10, 10,  5,
   0,  0,  0,  0,  0,  0,  0,  0
   ]
+
+whiteRooksTable = rooksTable
+blackRooksTable = V.reverse rooksTable
 
 queensTable = V.fromList [
   -20,-10,-10, -5, -5,-10,-10,-20,
@@ -98,6 +113,9 @@ queensTable = V.fromList [
   -20,-10,-10, -5, -5,-10,-10,-20
   ]
 
+whiteQueensTable = queensTable
+blackQueensTable = V.reverse queensTable
+
 kingsTable = V.fromList [
   20, 30, 10,  0,  0, 10, 30, 20,
   20, 20,  0,  0,  0,  0, 20, 20,
@@ -109,6 +127,9 @@ kingsTable = V.fromList [
   -30,-40,-40,-50,-50,-40,-40,-30
   ]
 
+whiteKingsTable = kingsTable
+blackKingsTable = V.reverse kingsTable
+
 kingsEndGameTable = V.fromList [
   -50,-40,-30,-20,-20,-30,-40,-50,
   -30,-20,-10,  0,  0,-10,-20,-30,
@@ -119,3 +140,6 @@ kingsEndGameTable = V.fromList [
   -30,-30,  0,  0,  0,  0,-30,-30,
   -50,-30,-30,-30,-30,-30,-30,-50
   ]
+
+whiteKingsEndGameTable = kingsEndGameTable
+blackKingsEndGameTable = V.reverse kingsEndGameTable
