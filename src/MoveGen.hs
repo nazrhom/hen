@@ -2,10 +2,19 @@ module MoveGen where
 
 import Board
 import qualified Data.Vector as V
-import Data.List (delete)
+import Data.List (delete, find)
 import Data.Maybe (catMaybes, fromJust)
 import qualified Data.Set as S
 import qualified Data.IntMap.Strict as M
+import Data.Bits
+import Data.Word
+-- Bit Constants
+
+notAFile :: Word64
+notAFile = 9187201950435737471
+
+notHFile :: Word64
+notHFile = 18374403900871474942
 
 type KnightMap = M.IntMap [Position]
 type KingMap = M.IntMap [Position]
@@ -124,10 +133,37 @@ loosesCastlingRights b (Move src dst) activeRights | S.null activeRights = S.emp
     (col, _) = src
 
 genAllPawnMoves :: GameState -> Colour -> [Move]
-genAllPawnMoves gs col = concatMap (genPawnMoves b col) pawns
+genAllPawnMoves gs col = genPawnMovesBB b col ++ genPawnTakesBB b col
   where
     b = board gs
-    pawns = pieceIndexes (Piece col Pawn) b
+
+genPawnMovesBB :: Board -> Colour -> [Move]
+genPawnMovesBB b White = singleStepMoves ++ doubleStepMoves
+  where
+    wp = whitePawns b
+    singleSteps = shift wp 8
+    emptySquares = complement (allPieces b)
+    targets = singleSteps .&. emptySquares
+    initialPawns = (wp .&. (shift 255 8))
+    initialPawnsSS = (shift initialPawns 8) .&. emptySquares
+    initialPawnDS = (shift initialPawnsSS 8) .&. emptySquares
+
+    mkMove x = Move (indexToPosition $ fromJust $ find (\y -> y `mod` 8 == x `mod` 8) $ toIndexVector wp) $ indexToPosition x
+    singleStepMoves = map mkMove $ toIndexVector targets
+    doubleStepMoves = map mkMove $ toIndexVector initialPawnDS
+genPawnMovesBB b Black = singleStepMoves ++ doubleStepMoves
+  where
+    bp = blackPawns b
+    singleSteps = shift bp (-8)
+    emptySquares = complement (allPieces b)
+    targets = singleSteps .&. emptySquares
+    initialPawns = (bp .&. (shift 255 48))
+    initialPawnsSS = (shift initialPawns (-8)) .&. emptySquares
+    initialPawnDS = (shift initialPawnsSS (-8)) .&. emptySquares
+
+    mkMove x = Move (indexToPosition $ fromJust $ find (\y -> y `mod` 8 == x `mod` 8) $ toIndexVector bp) $ indexToPosition x
+    singleStepMoves = map mkMove $ toIndexVector targets
+    doubleStepMoves = map mkMove $ toIndexVector initialPawnDS
 
 genPawnMoves :: Board -> Colour -> Int -> [Move]
 genPawnMoves b c i = genPawnTakes b c i ++ genPawnForwardMoves b c i
@@ -145,40 +181,57 @@ genPawnForwardMoves b c i = if isInStartingPosition then singleStep ++ doubleSte
     singleStep = if inbounds (positionToIndex singleStepSquare) && isEmpty b (positionToIndex singleStepSquare) then [Move (col, row) singleStepSquare] else []
     doubleStep = if inbounds (positionToIndex doubleStepSquare) && isEmpty b (positionToIndex singleStepSquare) && isEmpty b (positionToIndex doubleStepSquare) then [Move (col, row) doubleStepSquare] else []
 
+genPawnTakesBB :: Board -> Colour -> [Move]
+genPawnTakesBB b White = eastMoves ++ westMoves
+  where
+    wp = whitePawns b
+    eastAttacks = (shift wp 7) .&. notAFile .&. (allBlackPieces b)
+    westAttacks = (shift wp 9) .&. notHFile .&. (allBlackPieces b)
+    mkMove f x = Move (indexToPosition $ fromJust $ find (\y -> f (y `mod` 8) == x `mod` 8) $ toIndexVector wp) $ indexToPosition x
+    eastMoves = map (mkMove (\x -> x - 1)) $ toIndexVector eastAttacks
+    westMoves = map (mkMove (+1)) $ toIndexVector westAttacks
+genPawnTakesBB b Black = eastMoves ++ westMoves
+  where
+    bp = blackPawns b
+    eastAttacks = (shift bp (-9)) .&. notAFile .&. (allWhitePieces b)
+    westAttacks = (shift bp (-7)) .&. notHFile .&. (allWhitePieces b)
+    mkMove f x = Move (indexToPosition $ fromJust $ find (\y -> f (y `mod` 8) == x `mod` 8) $ toIndexVector bp) $ indexToPosition x
+    eastMoves = map (mkMove (\x -> x - 1)) $ toIndexVector eastAttacks
+    westMoves = map (mkMove (+1)) $ toIndexVector westAttacks
+
+
 genPawnTakes :: Board -> Colour -> Int -> [Move]
 genPawnTakes b c i = 
     if i `mod` 8 == 0
-    then checkRightTake
+    then checkLeftTake
     else 
       if i `mod` 8 == 7
-      then checkLeftTake 
+      then checkRightTake 
       else checkLeftTake ++ checkRightTake
   where
     checkRightTake = if (inbounds rightTake && containsOpponentPiece b c rightTake) then [Move current $ indexToPosition rightTake] else []
     checkLeftTake = if (inbounds leftTake && containsOpponentPiece b c leftTake) then [Move current $ indexToPosition leftTake] else []
     inbounds i = i >= 0 && i <= 63
-    rightTake = if c == White then i + 9 else i - 7
-    leftTake = if c == White then i + 7 else i - 9
+    rightTake = if c == White then i + 7 else i - 9
+    leftTake = if c == White then i + 9 else i - 7
     current = indexToPosition i
 
 isEmpty :: Board -> Int -> Bool
 isEmpty b i | i < 0 || i > 63 = error "debug: isEmpty out of bounds"
- | otherwise = case b `atIndex` i of
-  Nothing -> True
-  Just p -> False
+ | otherwise = not (allPieces b `testBit` i)
 
 containsOpponentPiece :: Board -> Colour -> Int -> Bool
 containsOpponentPiece b c i | i < 0 || i > 63 = error "debug: containsOpponentPiece out of bounds"
-       | otherwise = case b `atIndex` i of
-  Nothing -> False
-  Just (Piece c' p) -> c /= c'
+       | otherwise = case c of
+  White -> (allBlackPieces b) `testBit` i
+  Black -> (allWhitePieces b) `testBit` i 
 
 knightMoves :: Board -> Colour -> Int -> [Position]
 knightMoves board colour i = filter canMove $ fromJust $ M.lookup i knightMap
   where
-    canMove pos = case board `atPosition` pos of
-      Nothing -> True
-      Just (Piece c p) -> c /= colour
+    canMove pos = containsOpponentPiece board colour (positionToIndex pos) || isEmpty board (positionToIndex pos)
+      where
+        i = positionToIndex pos
 
 rookRays :: Board -> Colour -> Position -> [[Position]]
 rookRays board colour (col, row) = [north, south, east, west]
@@ -255,9 +308,7 @@ genKingMoves gs colour i = (map moveFromCurr $ filter canMove $ fromJust $ M.loo
   where
     (col, row) = indexToPosition i
     moveFromCurr pos = Move (col,row) pos
-    canMove pos = case (board gs) `atPosition` pos of
-      Nothing -> True
-      Just (Piece c p) -> c /= colour
+    canMove pos = containsOpponentPiece (board gs) colour (positionToIndex pos) || isEmpty (board gs) (positionToIndex pos)
     longCastle = if canCastle gs colour Long then [Castle colour Long] else []
     shortCastle = if canCastle gs colour Short then [Castle colour Short] else []
 

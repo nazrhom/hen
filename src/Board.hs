@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE BangPatterns #-}
 module Board where
 
 import qualified Data.Vector as V
@@ -8,33 +9,37 @@ import Data.Char (toUpper)
 import qualified Data.Set as S
 
 import Data.Word
+import Text.Printf
 import Data.Bits
 
+-- Pieces
 data PieceType = King | Queen | Rook | Bishop | Knight | Pawn deriving (Eq, Ord)
-
 data Colour = White | Black deriving (Show, Eq, Ord)
-
 data Piece = Piece Colour PieceType deriving Eq
+
+-- Moves
+data CastleType = Long | Short deriving (Eq, Show, Ord)
 data Move = Move Position Position | Castle Colour CastleType | Promote Position PieceType deriving (Eq, Show, Ord)
 
+-- Board
 newtype BoardVec = BoardVec (V.Vector (Maybe Piece))
 
 data Board = Board {
-    whitePawns :: Word64
-  , blackPawns :: Word64
-  , whiteKnights :: Word64
-  , blackKnights :: Word64
-  , whiteBishops :: Word64
-  , blackBishops :: Word64
-  , whiteRooks :: Word64
-  , blackRooks :: Word64
-  , whiteQueens :: Word64
-  , blackQueens :: Word64
-  , whiteKings :: Word64
-  , blackKings :: Word64
-  , allWhitePieces :: Word64
-  , allBlackPieces :: Word64
-  , allPieces :: Word64
+    whitePawns :: !Word64
+  , blackPawns :: !Word64
+  , whiteKnights :: !Word64
+  , blackKnights :: !Word64
+  , whiteBishops :: !Word64
+  , blackBishops :: !Word64
+  , whiteRooks :: !Word64
+  , blackRooks :: !Word64
+  , whiteQueens :: !Word64
+  , blackQueens :: !Word64
+  , whiteKings :: !Word64
+  , blackKings :: !Word64
+  , allWhitePieces :: !Word64
+  , allBlackPieces :: !Word64
+  , allPieces :: !Word64
 }
 
 indexesToBitBoard :: V.Vector Int -> Word64
@@ -77,12 +82,13 @@ fromVec board = Board {
     allWhitePieces = whitePawns .|. whiteKnights .|. whiteBishops .|. whiteRooks .|. whiteQueens .|. whiteKings
     allBlackPieces = blackPawns .|. blackKnights .|. blackBishops .|. blackRooks .|. blackQueens .|. blackKings
     allPieces = allWhitePieces .|. allBlackPieces
-    (wp, bp) = pieceTypeIndexesVec Pawn board
-    (wn, bn) = pieceTypeIndexesVec Knight board
-    (wb, bb) = pieceTypeIndexesVec Bishop board
-    (wr, br) = pieceTypeIndexesVec Rook board
-    (wq, bq) = pieceTypeIndexesVec Queen board
-    (wk, bk) = pieceTypeIndexesVec King board
+    convertPieceTypeIndexes pt board = let (w, b) = pieceTypeIndexesVec pt board in (V.map vecIndex2BBIndex w, V.map vecIndex2BBIndex b)
+    (wp, bp) = convertPieceTypeIndexes Pawn board
+    (wn, bn) = convertPieceTypeIndexes Knight board
+    (wb, bb) = convertPieceTypeIndexes Bishop board
+    (wr, br) = convertPieceTypeIndexes Rook board
+    (wq, bq) = convertPieceTypeIndexes Queen board
+    (wk, bk) = convertPieceTypeIndexes King board
 
 toVec :: Board -> BoardVec
 toVec board = execState go (BoardVec $ V.replicate 64 Nothing)
@@ -115,8 +121,9 @@ toVec board = execState go (BoardVec $ V.replicate 64 Nothing)
       b <- get
       put $ placeVec p (indexToPosition i) b
 
-type Position = (Column, Row)
+type Row = Int
 data Column = A | B | C | D | E | F | G | H deriving (Show, Eq, Ord)
+type Position = (Column, Row)
 
 toInt :: Column -> Int
 toInt A = 0
@@ -140,26 +147,33 @@ fromInt i = case i of
   7 -> H
   _ -> error "Column out of bounds"
 
-data CastleType = Long | Short deriving (Eq, Show, Ord)
 data CastlingRight = CastlingRight Colour CastleType deriving (Eq, Show, Ord)
 
 data GameState = GameState {
-  board :: Board,
-  active :: Colour,
-  castling :: S.Set CastlingRight,
-  enPassant :: Maybe Position,
-  halfMoveClock :: Int,
-  fullMove :: Int,
-  lastMove :: Maybe Move
+  board :: !Board,
+  active :: !Colour,
+  castling :: !(S.Set CastlingRight),
+  enPassant :: !(Maybe Position),
+  halfMoveClock :: !Int,
+  fullMove :: !Int,
+  lastMove :: !(Maybe Move)
 }
 
-type Row = Int
+positionToIndexVec :: Position -> Int
+positionToIndexVec (c, r) = (r - 1) * 8 + toInt c
 
 positionToIndex :: Position -> Int
-positionToIndex (c, r) = (r - 1) * 8 + toInt c
+positionToIndex (c, r) = (r * 8) - (toInt c + 1)
+
+vecIndex2BBIndex :: Int -> Int
+vecIndex2BBIndex = positionToIndex . indexToPositionVec
+
+indexToPositionVec :: Int -> Position
+indexToPositionVec i | i >= 0 && i <= 63 = (fromInt (i `rem` 8), (i `quot` 8) + 1)
+                  | otherwise = error "no position"
 
 indexToPosition :: Int -> Position
-indexToPosition i | i >= 0 && i <= 63 = (fromInt (i `rem` 8), (i `quot` 8) + 1)
+indexToPosition i | i >= 0 && i <= 63 = (fromInt (abs ((i `rem` 8) - 7)), (i `quot` 8) + 1)
                   | otherwise = error "no position"
 
 placeVec :: Piece -> Position -> BoardVec -> BoardVec
@@ -257,6 +271,7 @@ emptyBoard = fromVec $ BoardVec $ V.replicate 64 Nothing
 pieceIndexesVec :: Piece -> BoardVec -> V.Vector Int
 pieceIndexesVec p (BoardVec b) = V.elemIndices (Just p) b
 
+{-# INLINE pieceIndexes #-}
 pieceIndexes :: Piece -> Board -> [Int]
 pieceIndexes p bb = case p of
   (Piece White Pawn)   -> toIndexVector $ whitePawns bb
@@ -272,6 +287,7 @@ pieceIndexes p bb = case p of
   (Piece Black Queen)  -> toIndexVector $ blackQueens bb
   (Piece Black King)   -> toIndexVector $ blackKings bb
 
+{-# INLINE toIndexVector #-}
 toIndexVector :: Word64 -> [Int]
 toIndexVector b = go b []
   where
@@ -282,8 +298,9 @@ toIndexVector b = go b []
 pieceTypeIndexesVec :: PieceType -> BoardVec -> (V.Vector Int, V.Vector Int)
 pieceTypeIndexesVec p (BoardVec b) = (V.elemIndices (Just $ Piece White p) b, V.elemIndices (Just $ Piece Black p) b)
 
+{-# INLINE pieceTypeIndexes #-}
 pieceTypeIndexes :: PieceType -> Board -> ([Int], [Int])
-pieceTypeIndexes p bb = (pieceIndexes (Piece White p) bb , pieceIndexes (Piece Black p) bb)
+pieceTypeIndexes !p !bb = (pieceIndexes (Piece White p) bb , pieceIndexes (Piece Black p) bb)
 
 flipColour :: Colour -> Colour
 flipColour White = Black
@@ -364,3 +381,19 @@ initialGameState = GameState {
     fullMove=0,
     lastMove=Nothing
   }
+
+showBitBoard :: Word64 -> IO ()
+showBitBoard b = mapM_ putStrLn $ reverse $ go 0
+  where
+    go :: Int -> [String]
+    go 8 = []
+    go i = (show8Bit $ shiftR line (8*i)):(go (i+1))
+      where
+        mask = shift 255 (8*i)
+        line = b .&. mask
+
+show8Bit :: Word64 -> String
+show8Bit i = printf "%08b" i
+
+fromBoard :: Board -> GameState
+fromBoard b = initialGameState { board = b }

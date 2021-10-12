@@ -76,6 +76,19 @@ knightMove1 = TestCase (assertSameMoves "" expected moves)
       Move (A,1) (B,3),Move (A,1) (C,2),
       Move (F,3) (D,4),Move (F,3) (E,5),Move (F,3) (G,5),Move (F,3) (H,4),Move (F,3) (G,1)]
 
+pawnMove1 = TestCase (assertSameMoves "" expected moves)
+  where
+    gs = fromFEN "rnbqkbnr/pppp2p1/7p/4p3/2NP3N/1PP1Pp2/P4PPP/R1BQKB1R b KQkq - 9 10"
+    moves = genAllPawnMoves gs White
+    expected = [
+      Move (A,2) (A,3), Move (A,2) (A,4),
+      Move (B,3) (B,4),
+      Move (D,4) (D,5), Move (D,4) (E,5),
+      Move (E,3) (E,4),
+      Move (G,2) (F,3), Move (G,2) (G,3), Move (G,2) (G,4),
+      Move (H,2) (H,3)
+      ]
+
 initial = TestLabel "initial position" $ TestCase $ assertEqual "There are 20 initial valid moves" 20 (length moves)
   where
     gs = fromFEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1"
@@ -85,6 +98,7 @@ movement = TestLabel "movement" (TestList [
     rooks,
     queens,
     knights,
+    pawns,
     mixed
   ])
 
@@ -103,6 +117,10 @@ knights = TestLabel "knights" (TestList [
     knightMove1
   ])
 
+pawns = TestLabel "pawns" (TestList [
+    pawnMove1
+  ])
+
 mixed = TestLabel "mixed" (TestList [
     initial
   ])
@@ -118,7 +136,9 @@ tests = TestList [
 
 -- Reimplement to compare sorted lists but show them unsorted in error msg
 assertSameMoves :: (Ord a, Show a, Eq a) => String -> [a] -> [a] -> Assertion
-assertSameMoves preface expected actual = unless (sort actual == sort expected) (assertFailure msg)
+assertSameMoves preface expected actual = unless (sortedA == sortedE) (assertFailure msg)
   where
+    sortedA = sort actual
+    sortedE = sort expected
     msg = (if null preface then "" else preface ++ "\n") ++
-      "expected: " ++ show expected ++ "\n but got: " ++ show actual
+      "expected: " ++ show sortedE ++ "\n but got: " ++ show sortedA
