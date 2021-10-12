@@ -34,6 +34,8 @@ executables:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
+    - -Wall
+    - -O2
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
@@ -57,6 +59,7 @@ benchmarks:
     main:                Spec.hs
     source-dirs:         bench
     ghc-options:
+    - -O2
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N

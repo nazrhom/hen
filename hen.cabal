@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 428cef491c676a221e29e7cb0aa5e5191422d48e704d833f35dbe1a4712f85d3
+-- hash: 58dd7fbdedd97f66e53daee9696d1c7cfc55ac3261c7629518c6939c39da3e57
 
 name:           hen
 version:        0.1.0.0
@@ -51,7 +51,7 @@ executable hen-exe
       Paths_hen
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -O2 -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , containers
@@ -86,7 +86,7 @@ benchmark hen-bench
       Paths_hen
   hs-source-dirs:
       bench
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -O2 -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , containers

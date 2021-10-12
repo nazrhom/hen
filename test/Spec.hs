@@ -4,6 +4,7 @@ import Fen
 import Board
 import GameTree
 import MoveGen
+import Evaluation
 
 import Data.List (sort)
 import Control.Monad (unless)
@@ -18,11 +19,12 @@ main = do
 
 -- Siegbert Tarrasch vs. Max Kurschner
 -- 1. Qg6+ hxg6 2. Bxg6#
-mateInTwo = TestLabel "mate in two" $ TestCase (assertEqual "" (Move (F,5) (G,6)) move)
-  where
-    gs = fromFEN "r2qk2r/pb4pp/1n2Pb2/2B2Q2/p1p5/2P5/2B2PPP/RN2R1K1 w - - 1 0"
-    (gs', _) = negamax gs (active gs) depth
-    Just move = lastMove gs'
+mateInTwo = TestLabel "mate in two" $ TestCase (do
+    pt <- genPieceTables
+    let gs = fromFEN "r2qk2r/pb4pp/1n2Pb2/2B2Q2/p1p5/2P5/2B2PPP/RN2R1K1 w - - 1 0"
+    (gs', _) <- negamax pt gs (active gs) depth
+    let Just move = lastMove gs'
+    assertEqual "" (Move (F,5) (G,6)) move)
 
 rookMove1 = TestCase (assertSameMoves "" expected moves)
   where
