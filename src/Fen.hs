@@ -7,6 +7,7 @@ import Text.Parsec hiding (Column)
 import Data.Char (toUpper, isUpper)
 import Text.Read hiding (get)
 
+
 readColumn :: Char -> Column
 readColumn 'a' = A
 readColumn 'b' = B

@@ -1,5 +1,6 @@
 module GameTree where
 
+import Data.Foldable (foldl')
 import Board
 import MoveGen
 import Evaluation
@@ -8,7 +9,7 @@ negamax :: GameState -> Colour -> Int -> (GameState, Int)
 negamax gs colour depth = abPrune gs colour depth (-(8^8)) (8^8)
   where 
     abPrune gs colour depth alpha beta | depth == 0 = (gs, blackOrWhite * evaluateBoard (board gs))
-              | otherwise = (\(result, (score,_,_)) -> (result,score)) $ foldl f (initialGameState, (-(8^8), alpha, beta)) $ applyAll gs (genMoves gs colour)
+              | otherwise = (\(result, (score,_,_)) -> (result,score)) $ foldl' f (initialGameState, (-(8^8), alpha, beta)) $ applyAll gs (genMoves gs colour)
         where
           f :: (GameState, (Int, Int, Int)) -> GameState -> (GameState, (Int, Int, Int))
           f (cur, x@(bestVal, al, bt)) b = if al >= bt then (cur, x)
@@ -20,7 +21,7 @@ negamax gs colour depth = abPrune gs colour depth (-(8^8)) (8^8)
 
 negamaxSimple :: GameState -> Colour -> Int -> (GameState, Int)
 negamaxSimple gs colour depth | depth == 0 = (gs, blackOrWhite * evaluateBoard (board gs))
-                           | otherwise = foldl f (initialGameState, -(8^8)) $ applyAll gs (genMoves gs colour)
+                              | otherwise = foldl' f (initialGameState, -(8^8)) $ applyAll gs (genMoves gs colour)
   where 
     blackOrWhite = if colour == White then 1 else -1
     f :: (GameState, Int) -> GameState -> (GameState, Int)

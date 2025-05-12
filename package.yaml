@@ -25,6 +25,7 @@ dependencies:
 - mtl
 - parsec
 - containers
+- template-haskell
 
 library:
   source-dirs: src

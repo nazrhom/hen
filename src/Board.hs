@@ -122,7 +122,7 @@ toVec board = execState go (BoardVec $ V.replicate 64 Nothing)
       put $ placeVec p (indexToPosition i) b
 
 type Row = Int
-data Column = A | B | C | D | E | F | G | H deriving (Show, Eq, Ord)
+data Column = A | B | C | D | E | F | G | H deriving (Show, Eq, Ord, Enum)
 type Position = (Column, Row)
 
 toInt :: Column -> Int

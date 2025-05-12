@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.37.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 428cef491c676a221e29e7cb0aa5e5191422d48e704d833f35dbe1a4712f85d3
+-- hash: edf57c3ab69f751313c47444072e3a1935ffd15ab93a1a70ed380cfc63ffcc51
 
 name:           hen
 version:        0.1.0.0
@@ -32,6 +32,7 @@ library
       Fen
       GameTree
       MoveGen
+      QuasiQuoter
       Uci
   other-modules:
       Paths_hen
@@ -42,6 +43,7 @@ library
     , containers
     , mtl
     , parsec
+    , template-haskell
     , vector
   default-language: Haskell2010
 
@@ -58,6 +60,7 @@ executable hen-exe
     , hen
     , mtl
     , parsec
+    , template-haskell
     , vector
   default-language: Haskell2010
 
@@ -76,6 +79,7 @@ test-suite hen-test
     , hen
     , mtl
     , parsec
+    , template-haskell
     , vector
   default-language: Haskell2010
 
@@ -94,5 +98,6 @@ benchmark hen-bench
     , hen
     , mtl
     , parsec
+    , template-haskell
     , vector
   default-language: Haskell2010
